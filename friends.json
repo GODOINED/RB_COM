@@ -1,18 +1,18 @@
 [
     {
         "name": "Jester King",
-        "icq": "I'm a KING!"
+        "status": "I'm a KING!"
     },
     {
         "name": "MORIKO",
-        "icq": "Beez"
+        "status": "Beez"
     },
     {
         "name": "Kasey",
-        "icq": "what? devwork?"
+        "status": "what? devwork?"
     },
     {
         "name": "Mae",
-        "icq": "im mae/lulu"
+        "status": "im mae/lulu"
     }
 ]
