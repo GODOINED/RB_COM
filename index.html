@@ -912,7 +912,7 @@
                     container.innerHTML = '<p style="color: red; text-align: center;">No friends available.</p>';
                 } else {
                     container.innerHTML = '<ul style="list-style: none; padding: 0;">' + 
-                        friends.map(f => `<li style="margin-bottom: 8px;">👤 <strong>${escapeHtml(f.name)}</strong> — ICQ: ${escapeHtml(f.icq)}</li>`).join('') +
+                        friends.map(f => `<li style="margin-bottom: 8px;">👤 <strong>${escapeHtml(f.name)}</strong> — ${escapeHtml(f.icq)}</li>`).join('') +
                         '</ul>';
                 }
             }
