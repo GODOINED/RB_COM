@@ -173,7 +173,7 @@
         .project-button { background: #c0c0c0; border: 2px solid #ffffff; border-right-color: #808080; border-bottom-color: #808080; padding: 5px 12px; font-size: 12px; cursor: default; font-family: 'W95Font', 'MS Sans Serif', sans-serif; }
         .project-button:active { border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; }
 
-        /* ===== УВЕЛИЧЕННЫЙ ХОЛСТ (600x300) ===== */
+        /* ===== УВЕЛИЧЕННЫЙ ХОЛСТ (570x270) ===== */
         .canvas-container {
             position: relative;
             width: 570px;
@@ -203,14 +203,21 @@
             background-color: transparent;
         }
 
-        /* Панель управления Paint (шире, для удобства) */
+        /* Панель управления Paint */
         .paint-panel {
-            flex: 0 0 300px; /* увеличено с 350px до 400px */
+            flex: 0 0 300px;
             display: flex;
             flex-direction: column;
             gap: 15px;
         }
 
+        /* Контейнер для холста и панели (без inline-стиля) */
+        .paint-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: nowrap; /* по умолчанию горизонтально */
+            padding-bottom: 5px;
+        }
 
         .guestbook-messages { margin-top: 20px; }
 
@@ -292,6 +299,71 @@
         .image-modal-content img { max-width: 100%; max-height: 70vh; border: 2px solid #808080; border-top-color: #ffffff; border-left-color: #ffffff; background: white; }
 
         #paintGallery img { cursor: pointer; }
+
+        /* ===== АДАПТАЦИЯ ПОД МОБИЛЬНЫЕ УСТРОЙСТВА ===== */
+        @media (max-width: 800px) {
+            .left-panel {
+                width: 150px;
+            }
+
+            /* Перестраиваем Paint: холст сверху, панель снизу */
+            .paint-row {
+                flex-wrap: wrap !important; /* переопределяем nowrap */
+            }
+
+            .canvas-container {
+                width: 100%;
+                height: auto;
+                max-width: 570px;
+                margin: 0 auto;
+            }
+            .canvas-container canvas {
+                width: 100%;
+                height: auto;
+            }
+
+            .paint-panel {
+                flex: 0 0 100%;
+                width: 100%;
+            }
+
+            .paint-panel > div:first-child {
+                flex-wrap: wrap;
+            }
+
+            * {
+                font-size: 14px;
+            }
+
+            .project-button, .tool-button {
+                padding: 4px 8px;
+                font-size: 12px;
+            }
+
+            #paintGallery {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            }
+        }
+
+        @media (max-width: 500px) {
+            .left-panel {
+                width: 120px;
+            }
+
+            .paint-panel > div:first-child button {
+                font-size: 11px;
+                padding: 3px 4px;
+            }
+
+            #paintGallery {
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            }
+
+            .color-swatch {
+                width: 25px;
+                height: 25px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -376,7 +448,8 @@
                 <!-- Paint с увеличенным холстом -->
                 <div class="section" id="paint">
                     <h2>Paint</h2>
-                    <div style="display: flex; gap: 20px; flex-wrap: nowrap; padding-bottom: 5px;">
+                    <!-- Убрал inline-стиль, теперь используется класс .paint-row -->
+                    <div class="paint-row">
                         <div class="canvas-container">
                             <canvas id="mainCanvas" width="570" height="270"></canvas>
                             <canvas id="overlayCanvas" width="570" height="270"></canvas>
@@ -926,7 +999,7 @@
             undoBtn.addEventListener('click', undo);
 
             document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+                if (e.ctrlKey && e.code === 'KeyZ' && !e.shiftKey) {
                     const active = document.activeElement;
                     if (!(active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement)) {
                         e.preventDefault();
