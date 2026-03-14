@@ -170,8 +170,26 @@
         .project-cover img { width: 100%; height: 100%; object-fit: cover; }
         .project-title { font-weight: bold; font-size: 12px; margin-bottom: 4px; }
         .project-desc { font-size: 11px; color: #404040; margin-bottom: 10px; }
-        .project-button { background: #c0c0c0; border: 2px solid #ffffff; border-right-color: #808080; border-bottom-color: #808080; padding: 5px 12px; font-size: 12px; cursor: default; font-family: 'W95Font', 'MS Sans Serif', sans-serif; }
-        .project-button:active { border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; }
+
+        /* Стили для кнопок проектов (и ссылок, ведущих себя как кнопки) */
+        .project-button, a.project-button {
+            display: inline-block;
+            background: #c0c0c0;
+            border: 2px solid #ffffff;
+            border-right-color: #808080;
+            border-bottom-color: #808080;
+            padding: 5px 12px;
+            font-size: 12px;
+            cursor: default;
+            font-family: 'W95Font', 'MS Sans Serif', sans-serif;
+            text-decoration: none;
+            color: black;
+        }
+        .project-button:active, a.project-button:active {
+            border: 2px solid #808080;
+            border-right-color: #ffffff;
+            border-bottom-color: #ffffff;
+        }
 
         /* ===== УВЕЛИЧЕННЫЙ ХОЛСТ (570x270) ===== */
         .canvas-container {
@@ -215,7 +233,7 @@
         .paint-row {
             display: flex;
             gap: 20px;
-            flex-wrap: nowrap; /* по умолчанию горизонтально */
+            flex-wrap: nowrap;
             padding-bottom: 5px;
         }
 
@@ -306,9 +324,8 @@
                 width: 150px;
             }
 
-            /* Перестраиваем Paint: холст сверху, панель снизу */
             .paint-row {
-                flex-wrap: wrap !important; /* переопределяем nowrap */
+                flex-wrap: wrap !important;
             }
 
             .canvas-container {
@@ -335,7 +352,7 @@
                 font-size: 14px;
             }
 
-            .project-button, .tool-button {
+            .project-button, a.project-button, .tool-button {
                 padding: 4px 8px;
                 font-size: 12px;
             }
@@ -350,7 +367,8 @@
                 width: 120px;
             }
 
-            .paint-panel > div:first-child button {
+            .paint-panel > div:first-child button,
+            .paint-panel > div:first-child a.project-button {
                 font-size: 11px;
                 padding: 3px 4px;
             }
@@ -448,7 +466,6 @@
                 <!-- Paint с увеличенным холстом -->
                 <div class="section" id="paint">
                     <h2>Paint</h2>
-                    <!-- Убрал inline-стиль, теперь используется класс .paint-row -->
                     <div class="paint-row">
                         <div class="canvas-container">
                             <canvas id="mainCanvas" width="570" height="270"></canvas>
@@ -856,10 +873,11 @@
                 openCaptcha(performSendGuestbook, { name, message });
             });
 
-            // === Проекты ===
+            // === Проекты (с ссылками) ===
             async function loadProjects() {
                 const container = document.getElementById('projects-container');
-                const fallbackProjects = [];
+                const fallbackProjects = [
+                ];
 
                 let projects = [];
                 try {
@@ -884,7 +902,7 @@
                             <div class="project-cover"><img src="${escapeHtml(proj.cover)}" alt=""></div>
                             <div class="project-title">${escapeHtml(proj.title)}</div>
                             <div class="project-desc">${escapeHtml(proj.desc)}</div>
-                            <button class="project-button">${escapeHtml(proj.button)}</button>
+                            <a href="${escapeHtml(proj.link)}" class="project-button">${escapeHtml(proj.button)}</a>
                         `;
                         container.appendChild(item);
                     });
@@ -912,7 +930,7 @@
                     container.innerHTML = '<p style="color: red; text-align: center;">No friends available.</p>';
                 } else {
                     container.innerHTML = '<ul style="list-style: none; padding: 0;">' + 
-                        friends.map(f => `<li style="margin-bottom: 8px;">👤 <strong>${escapeHtml(f.name)}</strong> — ${escapeHtml(f.icq)}</li>`).join('') +
+                        friends.map(f => `<li style="margin-bottom: 8px;">👤 <strong>${escapeHtml(f.name)}</strong> — ICQ: ${escapeHtml(f.icq)}</li>`).join('') +
                         '</ul>';
                 }
             }
@@ -998,8 +1016,9 @@
 
             undoBtn.addEventListener('click', undo);
 
+            // Обработчик Ctrl+Z (работает в любой раскладке)
             document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.code === 'KeyZ' && !e.shiftKey) {
+                if (e.ctrlKey && e.code === 'KeyZ') {
                     const active = document.activeElement;
                     if (!(active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement)) {
                         e.preventDefault();
