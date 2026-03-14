@@ -71,26 +71,125 @@
             outline: none;
         }
 
-        /* ===== УЛУЧШЕННЫЕ ГРАНИЦЫ ХОЛСТА ===== */
+        /* ===== УВЕЛИЧЕННЫЙ МАСШТАБ (~125%) ===== */
+        * {
+            font-size: 15px;
+        }
+
+        .win95-window {
+            width: 1200px;
+            max-width: 95vw;
+            max-height: 95vh;
+            background-color: #c0c0c0;
+            border: 2px solid #ffffff;
+            border-right-color: #404040;
+            border-bottom-color: #404040;
+            box-shadow: 2px 2px 0px #00000080;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .window-title {
+            background: linear-gradient(90deg, #000080, #1084d0);
+            color: white;
+            padding: 4px 4px 4px 8px;
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+            font-size: 13px;
+            border-bottom: 2px solid #ffffff;
+            flex-shrink: 0;
+        }
+
+        .title-text { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .title-buttons { display: flex; gap: 2px; flex-shrink: 0; }
+        .title-buttons button {
+            width: 24px; height: 24px; background: #c0c0c0;
+            border: 2px solid #ffffff; border-right-color: #808080; border-bottom-color: #808080;
+            color: black; font-weight: bold; text-align: center; line-height: 20px;
+            cursor: default; font-size: 16px; font-family: 'W95Font', 'MS Sans Serif', sans-serif; padding: 0;
+        }
+        .title-buttons button:active { border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; }
+
+        .menu-bar { display: flex; background: #c0c0c0; padding: 4px 8px; gap: 20px; border-bottom: 2px solid #ffffff; flex-shrink: 0; }
+        .menu-item { cursor: default; font-size: 12px; padding: 2px 4px; }
+        .menu-item:hover { background: #000080; color: white; }
+
+        .toolbar { display: flex; background: #c0c0c0; padding: 4px; gap: 4px; border-bottom: 2px solid #ffffff; flex-shrink: 0; }
+        .tool-button { width: 26px; height: 26px; background: #c0c0c0; border: 2px solid #ffffff; border-right-color: #808080; border-bottom-color: #808080; font-size: 16px; cursor: default; display: flex; align-items: center; justify-content: center; }
+        .tool-button:active { border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; }
+
+        .window-content { display: flex; background: #c0c0c0; padding: 8px; gap: 8px; flex: 1; min-height: 0; }
+
+        .left-panel {
+            width: 220px;
+            background: #ffffff;
+            border: 2px solid #808080;
+            border-right-color: #ffffff;
+            border-bottom-color: #ffffff;
+            padding: 4px;
+            overflow-y: auto;
+            height: 100%;
+            flex-shrink: 0;
+        }
+
+        .folder-list { list-style: none; }
+        .folder-list li { padding: 6px 8px; margin: 2px 0; cursor: default; font-size: 12px; }
+        .folder-list li a { color: #000080; text-decoration: none; display: block; }
+        .folder-list li.selected { background: #000080; }
+        .folder-list li.selected a { color: white; }
+
+        .right-panel {
+            flex-grow: 1;
+            background: #ffffff;
+            border: 2px solid #808080;
+            border-right-color: #ffffff;
+            border-bottom-color: #ffffff;
+            padding: 0;
+            height: 600px;
+        }
+
+        .simplebar-content { padding: 15px 22px 15px 15px !important; }
+
+        .section h2 { font-size: 16px; font-weight: bold; margin-bottom: 12px; color: #000080; border-bottom: 2px solid #808080; padding-bottom: 4px; }
+        .about-content { display: flex; gap: 20px; font-size: 12px; }
+        .about-text { flex: 2; }
+        .about-text p { margin-bottom: 8px; }
+        .about-photo { flex: 1; text-align: center; }
+        .about-photo img { width: 120px; height: 120px; border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; background: #c0c0c0; max-width: 100%; height: auto; }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        }
+
+        .project-item { background: #c0c0c0; border: 2px solid #ffffff; border-right-color: #808080; border-bottom-color: #808080; padding: 10px; text-align: center; max-width: 100%; word-wrap: break-word; }
+        .project-cover { width: 100%; height: 120px; background: #808080; border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; margin-bottom: 8px; overflow: hidden; }
+        .project-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .project-title { font-weight: bold; font-size: 12px; margin-bottom: 4px; }
+        .project-desc { font-size: 11px; color: #404040; margin-bottom: 10px; }
+        .project-button { background: #c0c0c0; border: 2px solid #ffffff; border-right-color: #808080; border-bottom-color: #808080; padding: 5px 12px; font-size: 12px; cursor: default; font-family: 'W95Font', 'MS Sans Serif', sans-serif; }
+        .project-button:active { border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; }
+
+        /* ===== УВЕЛИЧЕННЫЙ ХОЛСТ (600x300) ===== */
         .canvas-container {
             position: relative;
-            width: 400px;
-            height: 200px;
+            width: 570px;
+            height: 270px;
             border: 3px solid #ffffff;
             border-right-color: #404040;
             border-bottom-color: #404040;
             background: white;
             box-sizing: content-box;
             flex-shrink: 0;
-            /* Добавляем внутреннюю рамку и тень для объёма */
-            box-shadow: 
-                inset 0 0 0 1px #808080,
-                2px 2px 0px #00000080;
+            box-shadow: inset 0 0 0 1px #808080, 2px 2px 0px #00000080;
         }
         .canvas-container canvas {
             display: block;
-            width: 400px;
-            height: 200px;
+            width: 570px;
+            height: 270px;
             background: white;
             border: none;
         }
@@ -98,11 +197,22 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 400px;
-            height: 200px;
+            width: 570px;
+            height: 270px;
             pointer-events: none;
             background-color: transparent;
         }
+
+        /* Панель управления Paint (шире, для удобства) */
+        .paint-panel {
+            flex: 0 0 300px; /* увеличено с 350px до 400px */
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+
+        .guestbook-messages { margin-top: 20px; }
 
         /* Модальное окно капчи */
         .captcha-overlay {
@@ -127,39 +237,13 @@
             box-shadow: 2px 2px 0px #00000080;
             font-family: 'W95Font', 'MS Sans Serif', sans-serif;
         }
-        .captcha-modal h3 {
-            margin-top: 0;
-            text-align: center;
-            color: #000080;
-        }
-        .captcha-question {
-            font-size: 18px;
-            text-align: center;
-            margin: 15px 0;
-        }
-        .captcha-input {
-            width: 100%;
-            padding: 4px;
-            border: 2px inset #ffffff;
-            background: #fff;
-            font-family: inherit;
-            box-sizing: border-box;
-        }
-        .captcha-input.error {
-            background-color: #ffcccc;
-        }
-        .captcha-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 20px;
-        }
-        .captcha-buttons button {
-            min-width: 80px;
-        }
-        .shake-modal {
-            animation: shake 0.3s ease-in-out;
-        }
+        .captcha-modal h3 { margin-top: 0; text-align: center; color: #000080; }
+        .captcha-question { font-size: 18px; text-align: center; margin: 15px 0; }
+        .captcha-input { width: 100%; padding: 4px; border: 2px inset #ffffff; background: #fff; font-family: inherit; box-sizing: border-box; }
+        .captcha-input.error { background-color: #ffcccc; }
+        .captcha-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+        .captcha-buttons button { min-width: 80px; }
+        .shake-modal { animation: shake 0.3s ease-in-out; }
 
         /* Модальное окно для просмотра рисунков */
         .image-modal-overlay {
@@ -196,44 +280,18 @@
             font-weight: bold;
             margin-bottom: 10px;
         }
-        .image-modal-header .title {
-            font-size: 14px;
-        }
+        .image-modal-header .title { font-size: 14px; }
         .image-modal-header .close {
-            width: 24px;
-            height: 24px;
-            background: #c0c0c0;
-            border: 2px solid #ffffff;
-            border-right-color: #808080;
-            border-bottom-color: #808080;
-            color: black;
-            text-align: center;
-            line-height: 20px;
-            cursor: default;
-            font-size: 18px;
+            width: 24px; height: 24px; background: #c0c0c0;
+            border: 2px solid #ffffff; border-right-color: #808080; border-bottom-color: #808080;
+            color: black; text-align: center; line-height: 20px; cursor: default; font-size: 18px;
             font-family: 'W95Font', 'MS Sans Serif', sans-serif;
         }
-        .image-modal-header .close:active {
-            border: 2px solid #808080;
-            border-right-color: #ffffff;
-            border-bottom-color: #ffffff;
-        }
-        .image-modal-content {
-            overflow: auto;
-            text-align: center;
-        }
-        .image-modal-content img {
-            max-width: 100%;
-            max-height: 70vh;
-            border: 2px solid #808080;
-            border-top-color: #ffffff;
-            border-left-color: #ffffff;
-            background: white;
-        }
+        .image-modal-header .close:active { border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; }
+        .image-modal-content { overflow: auto; text-align: center; }
+        .image-modal-content img { max-width: 100%; max-height: 70vh; border: 2px solid #808080; border-top-color: #ffffff; border-left-color: #ffffff; background: white; }
 
-        #paintGallery img {
-            cursor: pointer;
-        }
+        #paintGallery img { cursor: pointer; }
     </style>
 </head>
 <body>
@@ -315,22 +373,22 @@
                     <div id="gbMessages" class="guestbook-messages"></div>
                 </div>
 
-                <!-- Paint -->
+                <!-- Paint с увеличенным холстом -->
                 <div class="section" id="paint">
                     <h2>Paint</h2>
                     <div style="display: flex; gap: 20px; flex-wrap: nowrap; padding-bottom: 5px;">
-                        <!-- Холст с улучшенными границами -->
                         <div class="canvas-container">
-                            <canvas id="mainCanvas" width="400" height="200"></canvas>
-                            <canvas id="overlayCanvas" width="400" height="200"></canvas>
+                            <canvas id="mainCanvas" width="570" height="270"></canvas>
+                            <canvas id="overlayCanvas" width="570" height="270"></canvas>
                         </div>
                         
-                        <div style="flex: 0 0 250px; display: flex; flex-direction: column; gap: 15px;">
+                        <div class="paint-panel">
                             <div style="display: flex; gap: 5px; justify-content: space-between;">
                                 <button id="toolBrush" class="project-button active" style="flex: 1;">Brush</button>
                                 <button id="toolEraser" class="project-button" style="flex: 1;">Eraser</button>
                                 <button id="clearCanvas" class="project-button" style="flex: 1;">Clear</button>
                                 <button id="saveCanvas" class="project-button" style="flex: 1;">Save</button>
+                                <button id="undoBtn" class="project-button" style="flex: 1;">Undo</button>
                             </div>
 
                             <div style="display: flex; align-items: center; gap: 5px;">
@@ -789,7 +847,7 @@
             loadProjects();
             loadFriends();
 
-            // === Paint ===
+            // === Paint с увеличенным холстом и Undo ===
             const mainCanvas = document.getElementById('mainCanvas');
             const overlayCanvas = document.getElementById('overlayCanvas');
             const ctx = mainCanvas.getContext('2d');
@@ -806,6 +864,7 @@
             const pickColorBtn = document.getElementById('pickColorBtn');
             const colorPicker = document.getElementById('colorPicker');
             const currentColorIndicator = document.getElementById('currentColorIndicator');
+            const undoBtn = document.getElementById('undoBtn');
 
             const redSlider = document.getElementById('redSlider');
             const greenSlider = document.getElementById('greenSlider');
@@ -845,6 +904,41 @@
                 { name: 'white', hex: '#ffffff' }
             ];
 
+            // ===== ИСТОРИЯ (UNDO) =====
+            let history = [];
+            const MAX_HISTORY = 20;
+
+            function pushHistory() {
+                const imageData = ctx.getImageData(0, 0, mainCanvas.width, mainCanvas.height);
+                history.push(imageData);
+                if (history.length > MAX_HISTORY) history.shift();
+            }
+
+            function undo() {
+                if (history.length <= 1) return;
+                history.pop(); // убираем текущее состояние
+                const prev = history[history.length - 1];
+                ctx.putImageData(prev, 0, 0);
+                overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                drawing = false; // на всякий случай
+            }
+
+            undoBtn.addEventListener('click', undo);
+
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+                    const active = document.activeElement;
+                    if (!(active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement)) {
+                        e.preventDefault();
+                        undo();
+                    }
+                }
+            });
+
+            // Инициализация истории
+            pushHistory();
+
+            // ===== ПАЛИТРА =====
             function createPalette() {
                 colorPalette.innerHTML = '';
                 colors.forEach((c, index) => {
@@ -1033,7 +1127,10 @@
 
             function stopDrawing(e) {
                 e.preventDefault();
-                drawing = false;
+                if (drawing) {
+                    drawing = false;
+                    pushHistory(); // сохраняем состояние после рисования
+                }
                 if (mouseOverCanvas) {
                     drawPreview(lastKnownX, lastKnownY);
                 }
@@ -1065,6 +1162,7 @@
                 ctx.fillStyle = 'white';
                 ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
                 overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                pushHistory(); // сохраняем состояние после очистки
             });
 
             function isCanvasBlank() {
@@ -1190,7 +1288,6 @@
             // === Запуск загрузки гостевой книги ===
             loadGuestbook();
 
-            // Подписка на изменения в реальном времени
             supabaseClient
                 .channel('guestbook_changes')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guestbook' }, () => loadGuestbook())
