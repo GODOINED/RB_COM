@@ -70,16 +70,22 @@
         input[type=range]:focus {
             outline: none;
         }
+
+        /* ===== УЛУЧШЕННЫЕ ГРАНИЦЫ ХОЛСТА ===== */
         .canvas-container {
             position: relative;
             width: 400px;
             height: 200px;
-            border: 2px solid #808080;
-            border-top-color: #ffffff;
-            border-left-color: #ffffff;
+            border: 3px solid #ffffff;
+            border-right-color: #404040;
+            border-bottom-color: #404040;
             background: white;
             box-sizing: content-box;
             flex-shrink: 0;
+            /* Добавляем внутреннюю рамку и тень для объёма */
+            box-shadow: 
+                inset 0 0 0 1px #808080,
+                2px 2px 0px #00000080;
         }
         .canvas-container canvas {
             display: block;
@@ -155,7 +161,7 @@
             animation: shake 0.3s ease-in-out;
         }
 
-        /* === МОДАЛЬНОЕ ОКНО ДЛЯ ПРОСМОТРА РИСУНКОВ === */
+        /* Модальное окно для просмотра рисунков */
         .image-modal-overlay {
             position: fixed;
             top: 0;
@@ -225,7 +231,6 @@
             background: white;
         }
 
-        /* Делаем миниатюры кликабельными */
         #paintGallery img {
             cursor: pointer;
         }
@@ -233,8 +238,6 @@
 </head>
 <body>
     <div class="win95-window">
-        <!-- ... весь ваш HTML (без изменений) ... -->
-        <!-- (я оставляю ваш HTML без изменений, он уже полный) -->
         <div class="window-title">
             <div class="title-text">My Profile — Robert</div>
             <div class="title-buttons">
@@ -316,6 +319,7 @@
                 <div class="section" id="paint">
                     <h2>Paint</h2>
                     <div style="display: flex; gap: 20px; flex-wrap: nowrap; padding-bottom: 5px;">
+                        <!-- Холст с улучшенными границами -->
                         <div class="canvas-container">
                             <canvas id="mainCanvas" width="400" height="200"></canvas>
                             <canvas id="overlayCanvas" width="400" height="200"></canvas>
@@ -412,7 +416,7 @@
         </div>
     </div>
 
-    <!-- === НОВОЕ МОДАЛЬНОЕ ОКНО ДЛЯ ПРОСМОТРА РИСУНКОВ === -->
+    <!-- Модальное окно для просмотра рисунков -->
     <div class="image-modal-overlay" id="imageModal">
         <div class="image-modal">
             <div class="image-modal-header">
@@ -678,12 +682,10 @@
             captchaOk.addEventListener('click', () => {
                 const answer = parseInt(captchaAnswer.value.trim(), 10);
                 if (isNaN(answer) || answer !== captchaResult) {
-                    // Вызываем глобальный эффект ошибки (красный фон, тряска окна, звук)
                     triggerErrorEffect();
-                    // Также можно добавить тряску модального окна для дополнительного эффекта
                     shakeModal();
                     captchaAnswer.classList.add('error');
-                    generateCaptcha(); // новый вопрос
+                    generateCaptcha();
                     return;
                 }
                 playChimesSound();
@@ -708,7 +710,7 @@
                 } else {
                     gbName.value = '';
                     gbMessage.value = '';
-                    loadGuestbook(); // обновить список
+                    loadGuestbook();
                 }
             }
 
@@ -726,8 +728,7 @@
             // === Проекты ===
             async function loadProjects() {
                 const container = document.getElementById('projects-container');
-                const fallbackProjects = [
-                ];
+                const fallbackProjects = [];
 
                 let projects = [];
                 try {
@@ -762,8 +763,7 @@
             // === Друзья ===
             async function loadFriends() {
                 const container = document.getElementById('friends-container');
-                const fallbackFriends = [
-                ];
+                const fallbackFriends = [];
 
                 let friends = [];
                 try {
@@ -781,7 +781,7 @@
                     container.innerHTML = '<p style="color: red; text-align: center;">No friends available.</p>';
                 } else {
                     container.innerHTML = '<ul style="list-style: none; padding: 0;">' + 
-                        friends.map(f => `<li style="margin-bottom: 8px;">👤 <strong>${escapeHtml(f.name)}</strong> — ${escapeHtml(f.icq)}</li>`).join('') +
+                        friends.map(f => `<li style="margin-bottom: 8px;">👤 <strong>${escapeHtml(f.name)}</strong> — ICQ: ${escapeHtml(f.icq)}</li>`).join('') +
                         '</ul>';
                 }
             }
@@ -789,7 +789,7 @@
             loadProjects();
             loadFriends();
 
-            // === Paint (полный код) ===
+            // === Paint ===
             const mainCanvas = document.getElementById('mainCanvas');
             const overlayCanvas = document.getElementById('overlayCanvas');
             const ctx = mainCanvas.getContext('2d');
@@ -1113,7 +1113,7 @@
 
             function closeImageModalFunc() {
                 imageModal.style.display = 'none';
-                modalImage.src = ''; // очистка
+                modalImage.src = '';
             }
 
             closeImageModal.addEventListener('click', closeImageModalFunc);
@@ -1140,12 +1140,11 @@
                     imgDiv.style.padding = '4px';
                     imgDiv.style.backgroundColor = '#d4d0c8';
                     imgDiv.style.textAlign = 'center';
-                    imgDiv.style.cursor = 'pointer'; // курсор-указатель
+                    imgDiv.style.cursor = 'pointer';
                     imgDiv.innerHTML = `
                         <img src="${p.image_data}" style="max-width: 100%; height: auto; border: 1px solid black;">
                         <div style="font-size: 10px; margin-top: 4px;">${new Date(p.created_at).toLocaleString()}</div>
                     `;
-                    // Открытие модального окна при клике
                     imgDiv.addEventListener('click', () => {
                         openImageModal(p.image_data);
                     });
@@ -1191,7 +1190,7 @@
             // === Запуск загрузки гостевой книги ===
             loadGuestbook();
 
-            // Подписка на изменения в реальном времени (опционально)
+            // Подписка на изменения в реальном времени
             supabaseClient
                 .channel('guestbook_changes')
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guestbook' }, () => loadGuestbook())
