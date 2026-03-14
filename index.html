@@ -154,10 +154,87 @@
         .shake-modal {
             animation: shake 0.3s ease-in-out;
         }
+
+        /* === МОДАЛЬНОЕ ОКНО ДЛЯ ПРОСМОТРА РИСУНКОВ === */
+        .image-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 20000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        .image-modal {
+            background-color: #c0c0c0;
+            border: 2px solid #ffffff;
+            border-right-color: #404040;
+            border-bottom-color: #404040;
+            padding: 10px;
+            max-width: 90vw;
+            max-height: 90vh;
+            box-shadow: 2px 2px 0px #00000080;
+            display: flex;
+            flex-direction: column;
+        }
+        .image-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(90deg, #000080, #1084d0);
+            color: white;
+            padding: 5px 5px 5px 10px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .image-modal-header .title {
+            font-size: 14px;
+        }
+        .image-modal-header .close {
+            width: 24px;
+            height: 24px;
+            background: #c0c0c0;
+            border: 2px solid #ffffff;
+            border-right-color: #808080;
+            border-bottom-color: #808080;
+            color: black;
+            text-align: center;
+            line-height: 20px;
+            cursor: default;
+            font-size: 18px;
+            font-family: 'W95Font', 'MS Sans Serif', sans-serif;
+        }
+        .image-modal-header .close:active {
+            border: 2px solid #808080;
+            border-right-color: #ffffff;
+            border-bottom-color: #ffffff;
+        }
+        .image-modal-content {
+            overflow: auto;
+            text-align: center;
+        }
+        .image-modal-content img {
+            max-width: 100%;
+            max-height: 70vh;
+            border: 2px solid #808080;
+            border-top-color: #ffffff;
+            border-left-color: #ffffff;
+            background: white;
+        }
+
+        /* Делаем миниатюры кликабельными */
+        #paintGallery img {
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <div class="win95-window">
+        <!-- ... весь ваш HTML (без изменений) ... -->
+        <!-- (я оставляю ваш HTML без изменений, он уже полный) -->
         <div class="window-title">
             <div class="title-text">My Profile — Robert</div>
             <div class="title-buttons">
@@ -331,6 +408,19 @@
             <div class="captcha-buttons">
                 <button id="captchaOk" class="project-button">OK</button>
                 <button id="captchaCancel" class="project-button">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- === НОВОЕ МОДАЛЬНОЕ ОКНО ДЛЯ ПРОСМОТРА РИСУНКОВ === -->
+    <div class="image-modal-overlay" id="imageModal">
+        <div class="image-modal">
+            <div class="image-modal-header">
+                <span class="title">View Painting</span>
+                <span class="close" id="closeImageModal">×</span>
+            </div>
+            <div class="image-modal-content">
+                <img id="modalImage" src="" alt="Full size painting">
             </div>
         </div>
     </div>
@@ -1011,6 +1101,26 @@
                 openCaptcha(performSavePainting, imageData);
             });
 
+            // === Модальное окно для просмотра рисунков ===
+            const imageModal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            const closeImageModal = document.getElementById('closeImageModal');
+
+            function openImageModal(src) {
+                modalImage.src = src;
+                imageModal.style.display = 'flex';
+            }
+
+            function closeImageModalFunc() {
+                imageModal.style.display = 'none';
+                modalImage.src = ''; // очистка
+            }
+
+            closeImageModal.addEventListener('click', closeImageModalFunc);
+            imageModal.addEventListener('click', (e) => {
+                if (e.target === imageModal) closeImageModalFunc();
+            });
+
             async function loadPaintings() {
                 const { data, error } = await supabaseClient
                     .from('paintings')
@@ -1030,10 +1140,15 @@
                     imgDiv.style.padding = '4px';
                     imgDiv.style.backgroundColor = '#d4d0c8';
                     imgDiv.style.textAlign = 'center';
+                    imgDiv.style.cursor = 'pointer'; // курсор-указатель
                     imgDiv.innerHTML = `
                         <img src="${p.image_data}" style="max-width: 100%; height: auto; border: 1px solid black;">
                         <div style="font-size: 10px; margin-top: 4px;">${new Date(p.created_at).toLocaleString()}</div>
                     `;
+                    // Открытие модального окна при клике
+                    imgDiv.addEventListener('click', () => {
+                        openImageModal(p.image_data);
+                    });
                     gallery.appendChild(imgDiv);
                 });
             }
