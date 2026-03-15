@@ -1,13 +1,13 @@
-// clippy.js — с правильными путями (без ведущих слешей)
+// clippy.js — после анимации разговора возвращается в idle
 
 (function() {
     // ===== НАСТРОЙКИ =====
-    const BLINK_FRAME_INTERVAL = 100;
-    const TALK_FRAME_INTERVAL = 150;
-    const TALK_FRAMES_COUNT = 36;
+    const BLINK_FRAME_INTERVAL = 100;          // мс между кадрами моргания
+    const TALK_FRAME_INTERVAL = 150;           // мс между кадрами разговора
+    const TALK_FRAMES_COUNT = 36;               // количество кадров разговора
     const MESSAGE_DURATION = TALK_FRAMES_COUNT * TALK_FRAME_INTERVAL; // 5400 мс
-    const BLINK_INTERVAL_MIN = 3000;
-    const BLINK_INTERVAL_MAX = 7000;
+    const BLINK_INTERVAL_MIN = 3000;            // мин. интервал между морганиями
+    const BLINK_INTERVAL_MAX = 7000;            // макс. интервал
 
     // ===== КАДРЫ АНИМАЦИЙ =====
     const frames = {
@@ -19,6 +19,7 @@
         talk1: []
     };
 
+    // Генерация 36 кадров для talk1 (имена frame01.png ... frame36.png)
     for (let i = 3; i <= TALK_FRAMES_COUNT; i++) {
         const num = i.toString().padStart(2, '0');
         frames.talk1.push(`materialsl/clippy/talk1/frame${num}.png`);
@@ -113,9 +114,11 @@
                 clippyImage.src = talkFrames[currentFrame];
                 currentFrame++;
             } else {
+                // Анимация закончилась – переключаемся на статичный idle
                 clearInterval(animationInterval);
                 animationInterval = null;
-                // остаёмся на последнем кадре
+                clippyImage.src = frames.idle;  // ← возвращаемся в idle
+                // Оставляем состояние 'talk', чтобы моргание не возобновлялось до исчезновения сообщения
             }
         };
 
@@ -146,7 +149,7 @@
         if (hideTimeout) clearTimeout(hideTimeout);
         hideTimeout = setTimeout(() => {
             clippyContainer.classList.remove('show');
-            setIdle();
+            setIdle();  // после скрытия облачка возвращаем полный idle (с морганием)
         }, MESSAGE_DURATION);
     }
 

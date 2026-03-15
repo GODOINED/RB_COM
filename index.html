@@ -90,8 +90,8 @@
                     <h2>Paint</h2>
                     <div class="paint-row">
                         <div class="canvas-container">
-                            <canvas id="mainCanvas" width="570" height="270"></canvas>
-                            <canvas id="overlayCanvas" width="570" height="270"></canvas>
+                            <canvas id="mainCanvas" width="570" height="380"></canvas>
+                            <canvas id="overlayCanvas" width="570" height="380"></canvas>
                         </div>
                         
                         <div class="paint-panel">
@@ -147,6 +147,33 @@
                     <div id="paintGallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px;"></div>
                 </div>
 
+                <!-- Модальное окно для просмотра рисунков с индикатором загрузки -->
+                <div class="image-modal-overlay" id="imageModal">
+                    <div class="image-modal">
+                        <div class="image-modal-header">
+                            <span class="title">View Painting</span>
+                            <span class="close" id="closeImageModal">×</span>
+                        </div>
+                        <div class="image-modal-content">
+                            <img id="modalImage" src="" alt="Full size painting">
+                            <div id="modalLoading" style="text-align: center; margin: 10px 0; font-family: 'W95Font', monospace; color: #000080; display: none;">
+                                <span>Loading</span>
+                                <span class="loading-dots">...</span>
+                            </div>
+                            <div style="margin-top: 10px;">
+                                <span id="modalLikes">0</span> likes
+                                <button id="modalLikeBtn" class="like-button"></button>
+                                <div id="modalDate" style="font-size: 11px; color: #404040; margin-top: 5px;"></div>
+                            </div>
+                            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+                                <button id="modalPrevBtn" class="project-button">← Previous</button>
+                                <button id="modalRandomBtn" class="project-button">🎲 Random</button>
+                                <button id="modalNextBtn" class="project-button">Next →</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="section" id="settings">
                     <h2>Settings</h2>
                     <div class="settings-content">
@@ -182,19 +209,6 @@
             <div class="captcha-buttons">
                 <button id="captchaOk" class="project-button">OK</button>
                 <button id="captchaCancel" class="project-button">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Модальное окно для просмотра рисунков -->
-    <div class="image-modal-overlay" id="imageModal">
-        <div class="image-modal">
-            <div class="image-modal-header">
-                <span class="title">View Painting</span>
-                <span class="close" id="closeImageModal">×</span>
-            </div>
-            <div class="image-modal-content">
-                <img id="modalImage" src="" alt="Full size painting">
             </div>
         </div>
     </div>

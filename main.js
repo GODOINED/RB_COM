@@ -1,4 +1,4 @@
-// main.js — основной функционал сайта
+// main.js — финальная версия с кастомными сердечками и блокировкой прокрутки
 
 (function() {
     // === Звуки ===
@@ -230,6 +230,7 @@
         generateCaptcha();
         captchaOverlay.style.display = 'flex';
         captchaAnswer.focus();
+        disableBodyScroll(); // блокируем прокрутку
     }
 
     function closeCaptcha() {
@@ -237,6 +238,7 @@
         pendingAction = null;
         pendingData = null;
         captchaAnswer.classList.remove('error');
+        enableBodyScroll(); // разблокируем
     }
 
     function shakeModal() {
@@ -292,7 +294,7 @@
         openCaptcha(performSendGuestbook, { name, message });
     });
 
-    // === Проекты (с ссылками) ===
+    // === Проекты ===
     async function loadProjects() {
         const container = document.getElementById('projects-container');
         const fallbackProjects = [
@@ -357,7 +359,7 @@
     loadProjects();
     loadFriends();
 
-    // === Paint с увеличенным холстом и Undo ===
+    // === Paint ===
     const mainCanvas = document.getElementById('mainCanvas');
     const overlayCanvas = document.getElementById('overlayCanvas');
     const ctx = mainCanvas.getContext('2d');
@@ -708,38 +710,331 @@
         openCaptcha(performSavePainting, imageData);
     });
 
-    // === Модальное окно для просмотра рисунков ===
+    // === Модальное окно для просмотра рисунков с навигацией ===
     const imageModal = document.getElementById('imageModal');
     const modalImage = document.getElementById('modalImage');
     const closeImageModal = document.getElementById('closeImageModal');
+    const modalLikes = document.getElementById('modalLikes');
+    const modalLikeBtn = document.getElementById('modalLikeBtn');
+    const modalDate = document.getElementById('modalDate');
+    const modalPrevBtn = document.getElementById('modalPrevBtn');
+    const modalNextBtn = document.getElementById('modalNextBtn');
+    const modalRandomBtn = document.getElementById('modalRandomBtn');
+    const loadingDiv = document.getElementById('modalLoading');
 
-    function openImageModal(src) {
-        modalImage.src = src;
-        imageModal.style.display = 'flex';
+    // === Управление прокруткой ===
+    function disableBodyScroll() {
+        document.body.classList.add('modal-open');
+    }
+    function enableBodyScroll() {
+        document.body.classList.remove('modal-open');
     }
 
-    function closeImageModalFunc() {
-        imageModal.style.display = 'none';
-        modalImage.src = '';
+    let openImageModal = function(id) {
+        console.warn('openImageModal called but modal not initialized');
+    };
+
+    if (imageModal && modalImage && closeImageModal && loadingDiv) {
+        let currentModalId = null;
+        let allPaintings = [];
+        let allPaintingsLoaded = false;
+
+        async function loadAllPaintingsForNav() {
+            if (allPaintingsLoaded) return;
+            const { data, error } = await supabaseClient
+                .from('paintings')
+                .select('id')
+                .order('created_at', { ascending: false });
+            if (!error && data) {
+                allPaintings = data.map(p => p.id);
+                allPaintingsLoaded = true;
+            }
+        }
+
+        openImageModal = async function(id) {
+            await loadAllPaintingsForNav();
+            currentModalId = id;
+
+            // Показываем индикатор, прячем картинку и элементы
+            loadingDiv.style.display = 'block';
+            modalImage.style.display = 'none';
+            if (modalLikes && modalLikes.parentElement) {
+                modalLikes.parentElement.style.display = 'none';
+            }
+
+            const { data, error } = await supabaseClient
+                .from('paintings')
+                .select('image_data, created_at, likes')
+                .eq('id', id)
+                .single();
+
+            if (error || !data) {
+                loadingDiv.style.display = 'none';
+                modalImage.style.display = 'block';
+                modalImage.alt = 'Error loading image';
+                return;
+            }
+
+            modalImage.src = data.image_data;
+            modalImage.onload = () => {
+                loadingDiv.style.display = 'none';
+                modalImage.style.display = 'block';
+                if (modalLikes && modalLikes.parentElement) {
+                    modalLikes.parentElement.style.display = 'block';
+                }
+
+                modalLikes.textContent = data.likes || 0;
+                modalDate.textContent = new Date(data.created_at).toLocaleString();
+
+                (async () => {
+                    const { data: likesData } = await supabaseClient
+                        .from('painting_likes')
+                        .select('id')
+                        .eq('painting_id', id)
+                        .eq('visitor_id', visitorId);
+                    const liked = likesData && likesData.length > 0;
+
+                    // Обновляем классы кнопки лайка
+                    modalLikeBtn.classList.remove('liked', 'unliked');
+                    modalLikeBtn.classList.add(liked ? 'liked' : 'unliked');
+                    modalLikeBtn.disabled = liked;
+
+                    modalLikeBtn.onclick = null;
+                    if (!liked) {
+                        modalLikeBtn.onclick = async () => {
+                            modalLikeBtn.disabled = true;
+                            const oldLikes = parseInt(modalLikes.textContent) || 0;
+                            modalLikes.textContent = oldLikes + 1;
+                            modalLikeBtn.classList.remove('unliked');
+                            modalLikeBtn.classList.add('liked');
+
+                            const { error: insertError } = await supabaseClient
+                                .from('painting_likes')
+                                .insert({ painting_id: id, visitor_id: visitorId });
+
+                            if (insertError && insertError.code !== '23505') {
+                                console.error(insertError);
+                                modalLikes.textContent = oldLikes;
+                                modalLikeBtn.classList.remove('liked');
+                                modalLikeBtn.classList.add('unliked');
+                                modalLikeBtn.disabled = false;
+                                return;
+                            }
+
+                            const { error: updateError } = await supabaseClient
+                                .rpc('increment_likes', { painting_id: id });
+                            if (updateError) console.error(updateError);
+
+                            myLikes.add(id);
+                            loadPaintings();
+                        };
+                    }
+                })();
+            };
+
+            modalImage.onerror = () => {
+                loadingDiv.style.display = 'none';
+                modalImage.style.display = 'block';
+                modalImage.alt = 'Failed to load image';
+            };
+
+            imageModal.style.display = 'flex';
+            disableBodyScroll(); // блокируем прокрутку
+        };
+
+        function closeImageModalFunc() {
+            imageModal.style.display = 'none';
+            modalImage.src = '';
+            currentModalId = null;
+            enableBodyScroll(); // разблокируем
+        }
+
+        closeImageModal.addEventListener('click', closeImageModalFunc);
+        imageModal.addEventListener('click', (e) => {
+            if (e.target === imageModal) closeImageModalFunc();
+        });
+
+        if (modalPrevBtn && modalNextBtn && modalRandomBtn) {
+            modalPrevBtn.addEventListener('click', () => {
+                if (!currentModalId || allPaintings.length === 0) return;
+                const idx = allPaintings.indexOf(currentModalId);
+                if (idx > 0) openImageModal(allPaintings[idx - 1]);
+            });
+
+            modalNextBtn.addEventListener('click', () => {
+                if (!currentModalId || allPaintings.length === 0) return;
+                const idx = allPaintings.indexOf(currentModalId);
+                if (idx < allPaintings.length - 1) openImageModal(allPaintings[idx + 1]);
+            });
+
+            modalRandomBtn.addEventListener('click', () => {
+                if (allPaintings.length === 0) return;
+                const randomIdx = Math.floor(Math.random() * allPaintings.length);
+                openImageModal(allPaintings[randomIdx]);
+            });
+        }
     }
 
-    closeImageModal.addEventListener('click', closeImageModalFunc);
-    imageModal.addEventListener('click', (e) => {
-        if (e.target === imageModal) closeImageModalFunc();
-    });
+    // === ЛАЙКИ ===
+    const VISITOR_KEY = 'visitor_id';
 
+    function generateVisitorId() {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            return crypto.randomUUID();
+        }
+        return 'visitor_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    function getVisitorId() {
+        let id = localStorage.getItem(VISITOR_KEY);
+        if (!id) {
+            id = generateVisitorId();
+            localStorage.setItem(VISITOR_KEY, id);
+            console.log('Generated new visitor ID:', id);
+        } else {
+            console.log('Existing visitor ID:', id);
+        }
+        return id;
+    }
+
+    const visitorId = getVisitorId();
+    let myLikes = new Set();
+    let sparkleInterval = null;
+
+    async function loadMyLikes() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('painting_likes')
+                .select('painting_id')
+                .eq('visitor_id', visitorId);
+            if (error) {
+                console.error('Error loading my likes:', error);
+            } else {
+                myLikes = new Set(data.map(row => row.painting_id));
+                console.log('Loaded my likes:', myLikes);
+            }
+        } catch (err) {
+            console.error('Unexpected error loading likes:', err);
+        }
+    }
+
+    async function likePainting(paintingId, buttonElement, likeCountElement) {
+        console.log('Attempting to like painting:', paintingId);
+
+        buttonElement.disabled = true;
+        buttonElement.classList.remove('unliked');
+        buttonElement.classList.add('liked');
+        const currentLikes = parseInt(likeCountElement.textContent) || 0;
+        likeCountElement.textContent = currentLikes + 1;
+
+        try {
+            const { error: insertError } = await supabaseClient
+                .from('painting_likes')
+                .insert({ painting_id: paintingId, visitor_id: visitorId });
+
+            if (insertError) {
+                console.log('Insert error:', insertError);
+                if (insertError.code === '23505') {
+                    console.log('Already liked this painting');
+                    buttonElement.disabled = false;
+                    buttonElement.classList.remove('liked');
+                    buttonElement.classList.add('unliked');
+                    likeCountElement.textContent = currentLikes;
+                    alert('You have already liked this painting!');
+                    return;
+                } else {
+                    throw insertError;
+                }
+            }
+
+            const { error: updateError } = await supabaseClient
+                .rpc('increment_likes', { painting_id: paintingId });
+
+            if (updateError) throw updateError;
+
+            myLikes.add(paintingId);
+            console.log('Like successful, added to myLikes');
+            playChimesSound();
+            loadPaintings();
+
+        } catch (err) {
+            console.error('Error liking painting:', err);
+            buttonElement.disabled = false;
+            buttonElement.classList.remove('liked');
+            buttonElement.classList.add('unliked');
+            likeCountElement.textContent = currentLikes;
+            triggerErrorEffect();
+        }
+    }
+
+    // === Звёздочки ===
+    function addSparkles(container) {
+        const sparkleCount = 8;
+        const sparkles = [];
+
+        if (sparkleInterval) {
+            clearInterval(sparkleInterval);
+            sparkleInterval = null;
+        }
+
+        for (let i = 0; i < sparkleCount; i++) {
+            const sparkle = document.createElement('span');
+            sparkle.className = 'sparkle';
+            const size = Math.floor(Math.random() * 5) + 4;
+            const duration = (Math.random() * 1.5 + 1).toFixed(2);
+            const delay = (Math.random() * 2).toFixed(2);
+            const top = Math.random() * 100;
+            const left = Math.random() * 100;
+
+            sparkle.style.cssText = `
+                top: ${top}%;
+                left: ${left}%;
+                width: ${size}px;
+                height: ${size}px;
+                animation: sparkleTwinkle ${duration}s infinite ease-in-out;
+                animation-delay: ${delay}s;
+                opacity: ${Math.random() * 0.5 + 0.5};
+            `;
+
+            container.appendChild(sparkle);
+            sparkles.push(sparkle);
+        }
+
+        function updateSparklesPositions() {
+            sparkles.forEach(sparkle => {
+                const newTop = Math.random() * 100;
+                const newLeft = Math.random() * 100;
+                sparkle.style.top = `${newTop}%`;
+                sparkle.style.left = `${newLeft}%`;
+            });
+        }
+
+        sparkleInterval = setInterval(updateSparklesPositions, 2000);
+    }
+
+    // === Загрузка рисунков для галереи ===
     async function loadPaintings() {
         const { data, error } = await supabaseClient
             .from('paintings')
-            .select('image_data, created_at')
+            .select('id, image_data, created_at, likes')
             .order('created_at', { ascending: false })
             .limit(6);
         if (error) {
             console.error('Error loading paintings:', error);
             return;
         }
+
+        let maxLikes = 0;
+        data.forEach(p => {
+            if (p.likes > maxLikes) maxLikes = p.likes;
+        });
+
         gallery.innerHTML = '';
         data.forEach(p => {
+            const paintingId = p.id;
+            const liked = myLikes.has(paintingId);
+            const isTop = (p.likes === maxLikes && maxLikes > 0);
+
             const imgDiv = document.createElement('div');
             imgDiv.style.border = '2px solid #808080';
             imgDiv.style.borderRightColor = '#ffffff';
@@ -747,19 +1042,63 @@
             imgDiv.style.padding = '4px';
             imgDiv.style.backgroundColor = '#d4d0c8';
             imgDiv.style.textAlign = 'center';
-            imgDiv.style.cursor = 'pointer';
-            imgDiv.innerHTML = `
-                <img src="${p.image_data}" style="max-width: 100%; height: auto; border: 1px solid black;">
-                <div style="font-size: 10px; margin-top: 4px;">${new Date(p.created_at).toLocaleString()}</div>
-            `;
-            imgDiv.addEventListener('click', () => {
-                openImageModal(p.image_data);
-            });
+            imgDiv.style.marginBottom = '10px';
+            imgDiv.style.position = 'relative';
+
+            if (isTop) {
+                imgDiv.classList.add('top-painting');
+                addSparkles(imgDiv);
+            }
+
+            const img = document.createElement('img');
+            img.src = p.image_data;
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            img.style.border = '1px solid black';
+            img.style.cursor = 'pointer';
+            img.addEventListener('click', () => openImageModal(paintingId));
+            imgDiv.appendChild(img);
+
+            const dateDiv = document.createElement('div');
+            dateDiv.style.fontSize = '10px';
+            dateDiv.style.marginTop = '4px';
+            dateDiv.textContent = new Date(p.created_at).toLocaleString();
+            imgDiv.appendChild(dateDiv);
+
+            const likeRow = document.createElement('div');
+            likeRow.style.display = 'flex';
+            likeRow.style.alignItems = 'center';
+            likeRow.style.justifyContent = 'center';
+            likeRow.style.marginTop = '5px';
+            likeRow.style.gap = '5px';
+
+            const likeCount = document.createElement('span');
+            likeCount.textContent = p.likes || 0;
+            likeCount.style.fontSize = '12px';
+            likeCount.style.fontWeight = 'bold';
+
+            const likeBtn = document.createElement('button');
+            likeBtn.className = 'like-button';
+            likeBtn.classList.add(liked ? 'liked' : 'unliked');
+            likeBtn.style.cursor = liked ? 'default' : 'pointer';
+            if (liked) {
+                likeBtn.disabled = true;
+            }
+
+            if (!liked) {
+                likeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    likePainting(paintingId, likeBtn, likeCount);
+                });
+            }
+
+            likeRow.appendChild(likeBtn);
+            likeRow.appendChild(likeCount);
+            imgDiv.appendChild(likeRow);
+
             gallery.appendChild(imgDiv);
         });
     }
-
-    loadPaintings();
 
     // === Навигация по меню ===
     const menuItems = document.querySelectorAll('#menu li');
@@ -794,8 +1133,12 @@
         link.addEventListener('click', e => e.preventDefault());
     });
 
-    // === Запуск загрузки гостевой книги ===
+    // === Запуск загрузки гостевой книги и лайков ===
     loadGuestbook();
+    (async () => {
+        await loadMyLikes();
+        loadPaintings();
+    })();
 
     supabaseClient
         .channel('guestbook_changes')
