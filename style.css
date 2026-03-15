@@ -660,6 +660,7 @@ body.modal-open {
 
 /* ===== Стили для популярного рисунка ===== */
 .top-painting {
+    background-color: #ffe246 !important;
     border: 3px solid gold !important;
     border-right-color: #b8860b !important;
     border-bottom-color: #b8860b !important;
