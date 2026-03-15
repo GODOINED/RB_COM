@@ -83,6 +83,13 @@
                         <button id="gbSend" class="project-button" style="width: 100%;">Send</button>
                     </div>
                     <div id="gbMessages" class="guestbook-messages"></div>
+                    
+                    <!-- Пагинация для гостевой книги -->
+                    <div class="guestbook-pagination" style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+                        <button id="guestbookPrevPageBtn" class="project-button" disabled>← Previous page</button>
+                        <span id="guestbookPageIndicator" style="align-self: center; font-size: 12px;">Page 1</span>
+                        <button id="guestbookNextPageBtn" class="project-button" disabled>Next page →</button>
+                    </div>
                 </div>
 
                 <!-- Paint с увеличенным холстом -->
@@ -143,11 +150,26 @@
                         </div>
                     </div>
 
+                    <!-- Панель слоёв -->
+                    <div class="layers-panel" style="margin-top: 20px; border: 2px solid #808080; padding: 8px; background: #c0c0c0;">
+                        <div style="display: flex; gap: 5px; margin-bottom: 8px; flex-wrap: wrap;">
+                            <button id="addLayerBtn" class="project-button">➕ Add layer</button>
+                            <button id="deleteLayerBtn" class="project-button">➖ Delete layer</button>
+                            <button id="mergeDownBtn" class="project-button">⬇️ Merge down</button>
+                        </div>
+                        <div id="layersList" style="max-height: 150px; background: #ffffff; border: 2px inset; padding: 4px; overflow-y: auto;"></div>
+                    </div>
+
                     <h3 style="margin-top: 20px;">Recent Paintings</h3>
                     <div id="paintGallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px;"></div>
+                    <div class="pagination" style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+                        <button id="prevPageBtn" class="project-button" disabled>← Previous page</button>
+                        <span id="pageIndicator" style="align-self: center; font-size: 12px;">Page 1</span>
+                        <button id="nextPageBtn" class="project-button" disabled>Next page →</button>
+                    </div>
                 </div>
 
-                <!-- Модальное окно для просмотра рисунков с индикатором загрузки -->
+                <!-- Модальное окно для просмотра рисунков -->
                 <div class="image-modal-overlay" id="imageModal">
                     <div class="image-modal">
                         <div class="image-modal-header">
@@ -188,6 +210,7 @@
                         <p><input type="radio" name="wallpaper" id="wallBlue" value="blue"> Classic blue</p>
                         <p><input type="radio" name="wallpaper" id="wallGreen" value="green"> Teal green</p>
                         <p><input type="radio" name="wallpaper" id="wallGray" value="gray"> Gray</p>
+                        <p><input type="radio" name="wallpaper" id="wallCustom" value="custom"> Custom (purple gradient)</p>
                     </div>
                 </div>
             </div>
@@ -213,6 +236,24 @@
         </div>
     </div>
 
+    <!-- Модальное окно для переименования слоя -->
+    <div class="rename-modal-overlay" id="renameLayerModal">
+        <div class="rename-modal">
+            <div class="rename-modal-header">
+                <span class="title">Rename Layer</span>
+                <span class="close" id="closeRenameModal">×</span>
+            </div>
+            <div class="rename-modal-content">
+                <p style="margin-bottom: 10px;">Enter new layer name:</p>
+                <input type="text" id="renameLayerInput" class="rename-input" placeholder="Layer name" maxlength="30">
+                <div class="rename-buttons">
+                    <button id="renameLayerOk" class="project-button">OK</button>
+                    <button id="renameLayerCancel" class="project-button">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Clippy -->
     <div class="clippy-container" id="clippyContainer">
         <div class="clippy-bubble" id="clippyMessage"></div>
@@ -222,6 +263,7 @@
     <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="clippy.js"></script>
+    <script src="custom_wallpaper.js"></script>
     <script src="main.js"></script>
 </body>
 </html>

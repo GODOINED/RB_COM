@@ -1,5 +1,4 @@
-// main.js — финальная версия с кастомными сердечками и блокировкой прокрутки
-
+// main.js — финальная версия с прозрачными слоями, модальным окном переименования, защитой Background, пагинацией, кастомным фоном и красным оверлеем
 (function() {
     // === Звуки ===
     const clickSoundUrl = 'sounds/click.mp3';
@@ -52,22 +51,52 @@
     const wallBlue = document.getElementById('wallBlue');
     const wallGreen = document.getElementById('wallGreen');
     const wallGray = document.getElementById('wallGray');
+    const wallCustom = document.getElementById('wallCustom');
     const body = document.body;
     const win95Window = document.querySelector('.win95-window');
 
     let originalBackground = body.style.background;
+    let customWallpaperLoaded = false;
 
     function setWallpaper(type) {
+        if (window.CustomWallpaper && typeof window.CustomWallpaper.stop === 'function') {
+            window.CustomWallpaper.stop();
+        }
+
         let gradient;
         switch(type) {
             case 'dark': gradient = 'linear-gradient(145deg, #1e1e1e 0%, #2d2d2d 100%)'; break;
             case 'blue': gradient = 'linear-gradient(145deg, #003399 0%, #3366cc 100%)'; break;
             case 'green': gradient = 'linear-gradient(145deg, #004d40 0%, #008b74 100%)'; break;
             case 'gray': gradient = 'linear-gradient(145deg, #505050 0%, #808080 100%)'; break;
+            case 'custom':
+                body.style.background = 'none';
+                originalBackground = 'none';
+                if (window.CustomWallpaper) {
+                    window.CustomWallpaper.start();
+                } else {
+                    loadCustomWallpaperScript();
+                }
+                return;
             default: gradient = 'linear-gradient(145deg, #1e1e1e 0%, #2d2d2d 100%)';
         }
         body.style.background = gradient;
         originalBackground = gradient;
+    }
+
+    function loadCustomWallpaperScript() {
+        if (customWallpaperLoaded) return;
+        const script = document.createElement('script');
+        script.src = 'custom_wallpaper.js';
+        script.onload = function() {
+            customWallpaperLoaded = true;
+            if (window.CustomWallpaper) window.CustomWallpaper.start();
+        };
+        script.onerror = function() {
+            console.error('Failed to load custom wallpaper');
+            body.style.background = 'linear-gradient(145deg, #1e1e1e 0%, #2d2d2d 100%)';
+        };
+        document.head.appendChild(script);
     }
 
     function loadSettings() {
@@ -90,6 +119,7 @@
                 case 'blue': wallBlue.checked = true; setWallpaper('blue'); break;
                 case 'green': wallGreen.checked = true; setWallpaper('green'); break;
                 case 'gray': wallGray.checked = true; setWallpaper('gray'); break;
+                case 'custom': wallCustom.checked = true; setWallpaper('custom'); break;
                 default: wallDark.checked = true; setWallpaper('dark');
             }
         } else {
@@ -107,6 +137,7 @@
         if (wallBlue.checked) wallpaper = 'blue';
         else if (wallGreen.checked) wallpaper = 'green';
         else if (wallGray.checked) wallpaper = 'gray';
+        else if (wallCustom.checked) wallpaper = 'custom';
         localStorage.setItem('wallpaper', wallpaper);
     }
 
@@ -120,6 +151,7 @@
     wallBlue.addEventListener('change', function() { setWallpaper('blue'); autosaveCheckbox.checked && saveSettings(); });
     wallGreen.addEventListener('change', function() { setWallpaper('green'); autosaveCheckbox.checked && saveSettings(); });
     wallGray.addEventListener('change', function() { setWallpaper('gray'); autosaveCheckbox.checked && saveSettings(); });
+    wallCustom.addEventListener('change', function() { setWallpaper('custom'); autosaveCheckbox.checked && saveSettings(); });
     autosaveCheckbox.addEventListener('change', function(e) { if (e.target.checked) saveSettings(); });
     loadSettings();
 
@@ -133,24 +165,43 @@
     const gbMessage = document.getElementById('gbMessage');
     const gbSend = document.getElementById('gbSend');
     const gbMessages = document.getElementById('gbMessages');
+    
+    // Пагинация гостевой книги
+    let guestbookCurrentPage = 0;
+    const guestbookPageSize = 5;
+    let guestbookTotalMessages = 0;
+    let guestbookTotalPages = 0;
+    const guestbookPrevBtn = document.getElementById('guestbookPrevPageBtn');
+    const guestbookNextBtn = document.getElementById('guestbookNextPageBtn');
+    const guestbookPageIndicator = document.getElementById('guestbookPageIndicator');
 
-    async function loadGuestbook() {
-        try {
-            const { data, error } = await supabaseClient
-                .from('guestbook')
-                .select('*')
-                .order('date', { ascending: false });
-            
-            if (error) {
-                console.error('Error loading messages:', error);
-                gbMessages.innerHTML = '<p style="color: red;">Failed to load messages.</p>';
-                return;
-            }
-            
-            renderMessages(data || []);
-        } catch (err) {
-            console.error('Unexpected error:', err);
-            gbMessages.innerHTML = '<p style="color: red;">Unexpected error.</p>';
+    async function loadGuestbook(page = guestbookCurrentPage) {
+        const offset = page * guestbookPageSize;
+        const { data, count, error } = await supabaseClient
+            .from('guestbook')
+            .select('*', { count: 'exact' })
+            .order('date', { ascending: false })
+            .range(offset, offset + guestbookPageSize - 1);
+
+        if (error) {
+            console.error('Error loading messages:', error);
+            gbMessages.innerHTML = '<p style="color: red;">Failed to load messages.</p>';
+            return;
+        }
+
+        guestbookTotalMessages = count || 0;
+        guestbookTotalPages = Math.ceil(guestbookTotalMessages / guestbookPageSize);
+        guestbookCurrentPage = page;
+
+        updateGuestbookPagination();
+        renderMessages(data || []);
+    }
+
+    function updateGuestbookPagination() {
+        if (guestbookPrevBtn && guestbookNextBtn && guestbookPageIndicator) {
+            guestbookPrevBtn.disabled = guestbookCurrentPage === 0;
+            guestbookNextBtn.disabled = guestbookCurrentPage >= guestbookTotalPages - 1;
+            guestbookPageIndicator.textContent = `Page ${guestbookCurrentPage + 1} of ${guestbookTotalPages || 1}`;
         }
     }
 
@@ -190,16 +241,6 @@
         });
     }
 
-    function triggerErrorEffect() {
-        playChordSound();
-        win95Window.classList.add('error-effect');
-        body.style.background = 'linear-gradient(145deg, #4a0000 0%, #8b0000 100%)';
-        setTimeout(() => {
-            win95Window.classList.remove('error-effect');
-            body.style.background = originalBackground;
-        }, 300);
-    }
-
     // === Капча ===
     const captchaOverlay = document.getElementById('captchaOverlay');
     const captchaModal = document.getElementById('captchaModal');
@@ -230,7 +271,7 @@
         generateCaptcha();
         captchaOverlay.style.display = 'flex';
         captchaAnswer.focus();
-        disableBodyScroll(); // блокируем прокрутку
+        disableBodyScroll();
     }
 
     function closeCaptcha() {
@@ -238,13 +279,35 @@
         pendingAction = null;
         pendingData = null;
         captchaAnswer.classList.remove('error');
-        enableBodyScroll(); // разблокируем
+        enableBodyScroll();
     }
 
     function shakeModal() {
         captchaModal.classList.add('shake-modal');
         setTimeout(() => {
             captchaModal.classList.remove('shake-modal');
+        }, 300);
+    }
+
+    function triggerErrorEffect() {
+        playChordSound();
+        win95Window.classList.add('error-effect');
+        
+        // Красный оверлей под окном, над фоном
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+        overlay.style.zIndex = '1500';
+        overlay.style.pointerEvents = 'none';
+        document.body.appendChild(overlay);
+        
+        setTimeout(() => {
+            win95Window.classList.remove('error-effect');
+            overlay.remove();
         }, 300);
     }
 
@@ -279,7 +342,8 @@
         } else {
             gbName.value = '';
             gbMessage.value = '';
-            loadGuestbook();
+            guestbookCurrentPage = 0;
+            await loadGuestbook(0);
         }
     }
 
@@ -297,9 +361,7 @@
     // === Проекты ===
     async function loadProjects() {
         const container = document.getElementById('projects-container');
-        const fallbackProjects = [
-        ];
-
+        const fallbackProjects = [];
         let projects = [];
         try {
             const response = await fetch('projects.json');
@@ -334,7 +396,6 @@
     async function loadFriends() {
         const container = document.getElementById('friends-container');
         const fallbackFriends = [];
-
         let friends = [];
         try {
             const response = await fetch('friends.json');
@@ -351,7 +412,7 @@
             container.innerHTML = '<p style="color: red; text-align: center;">No friends available.</p>';
         } else {
             container.innerHTML = '<ul style="list-style: none; padding: 0;">' + 
-                friends.map(f => `<li style="margin-bottom: 8px;">👤 <strong>${escapeHtml(f.name)}</strong> — ${escapeHtml(f.icq)}</li>`).join('') +
+                friends.map(f => `<li style="margin-bottom: 8px;">👤 <strong>${escapeHtml(f.name)}</strong> — ICQ: ${escapeHtml(f.icq)}</li>`).join('') +
                 '</ul>';
         }
     }
@@ -359,7 +420,7 @@
     loadProjects();
     loadFriends();
 
-    // === Paint ===
+    // === Paint (слои) ===
     const mainCanvas = document.getElementById('mainCanvas');
     const overlayCanvas = document.getElementById('overlayCanvas');
     const ctx = mainCanvas.getContext('2d');
@@ -391,12 +452,85 @@
     let currentColor = '#000000';
     let brushSize = 2;
 
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+    // Слои
+    let layers = [];
+    let currentLayerIndex = 0;
 
-    let drawing = false;
-    let lastX = 0, lastY = 0;
+    function initLayers() {
+        const baseCanvas = document.createElement('canvas');
+        baseCanvas.width = mainCanvas.width;
+        baseCanvas.height = mainCanvas.height;
+        const baseCtx = baseCanvas.getContext('2d');
+        baseCtx.fillStyle = 'white';
+        baseCtx.fillRect(0, 0, baseCanvas.width, baseCanvas.height);
+        
+        layers = [{
+            canvas: baseCanvas,
+            ctx: baseCtx,
+            visible: true,
+            opacity: 1,
+            name: 'Background',
+            id: Date.now()
+        }];
+        currentLayerIndex = 0;
+        renderLayersUI();
+        compositeLayers();
+        pushHistoryLayers();
+    }
 
+    function compositeLayers() {
+        // Заливаем фон белым
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+        
+        layers.forEach(layer => {
+            if (layer.visible) {
+                ctx.globalAlpha = layer.opacity;
+                ctx.drawImage(layer.canvas, 0, 0);
+            }
+        });
+        ctx.globalAlpha = 1.0;
+    }
+
+    let history = [];
+    const MAX_HISTORY = 20;
+
+    function pushHistoryLayers() {
+        const snapshot = layers.map(layer => {
+            return layer.ctx.getImageData(0, 0, mainCanvas.width, mainCanvas.height);
+        });
+        history.push(snapshot);
+        if (history.length > MAX_HISTORY) history.shift();
+    }
+
+    function restoreLayersFromHistory(snapshot) {
+        snapshot.forEach((imageData, index) => {
+            if (layers[index]) {
+                layers[index].ctx.putImageData(imageData, 0, 0);
+            }
+        });
+        compositeLayers();
+        renderLayersUI();
+    }
+
+    undoBtn.addEventListener('click', () => {
+        if (history.length <= 1) return;
+        history.pop();
+        const prev = history[history.length - 1];
+        restoreLayersFromHistory(prev);
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.code === 'KeyZ') {
+            const active = document.activeElement;
+            if (!(active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement)) {
+                e.preventDefault();
+                undoBtn.click();
+            }
+        }
+    });
+
+    // Палитра
     const colors = [
         { name: 'black', hex: '#000000' },
         { name: 'dark red', hex: '#800000' },
@@ -416,40 +550,6 @@
         { name: 'white', hex: '#ffffff' }
     ];
 
-    // ===== ИСТОРИЯ (UNDO) =====
-    let history = [];
-    const MAX_HISTORY = 20;
-
-    function pushHistory() {
-        const imageData = ctx.getImageData(0, 0, mainCanvas.width, mainCanvas.height);
-        history.push(imageData);
-        if (history.length > MAX_HISTORY) history.shift();
-    }
-
-    function undo() {
-        if (history.length <= 1) return;
-        history.pop(); // убираем текущее состояние
-        const prev = history[history.length - 1];
-        ctx.putImageData(prev, 0, 0);
-        overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-        drawing = false;
-    }
-
-    undoBtn.addEventListener('click', undo);
-
-    document.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.code === 'KeyZ') {
-            const active = document.activeElement;
-            if (!(active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement)) {
-                e.preventDefault();
-                undo();
-            }
-        }
-    });
-
-    pushHistory();
-
-    // ===== ПАЛИТРА =====
     function createPalette() {
         colorPalette.innerHTML = '';
         colors.forEach((c, index) => {
@@ -569,16 +669,18 @@
             updateSlidersFromColor(hex);
             updateValues();
         } else {
-            alert('Invalid hex format. Use #RRGGBB');
+            triggerErrorEffect();
         }
     });
 
     currentColorIndicator.style.backgroundColor = currentColor;
     updateSlidersFromColor(currentColor);
 
-    // === Предпросмотр ===
+    // Предпросмотр
     let mouseOverCanvas = false;
     let lastKnownX = 0, lastKnownY = 0;
+    let drawing = false;
+    let lastX = 0, lastY = 0;
 
     function getMousePos(e, canvas) {
         const rect = canvas.getBoundingClientRect();
@@ -606,12 +708,26 @@
 
     function startDrawing(e) {
         e.preventDefault();
+        if (!layers.length || !layers[currentLayerIndex]) {
+            console.error('No layer selected');
+            return;
+        }
         drawing = true;
         const pos = getMousePos(e, mainCanvas);
         lastX = pos.x;
         lastY = pos.y;
-        ctx.beginPath();
-        ctx.moveTo(lastX, lastY);
+        const layer = layers[currentLayerIndex];
+        
+        if (currentTool === 'brush') {
+            layer.ctx.globalCompositeOperation = 'source-over';
+            layer.ctx.strokeStyle = currentColor;
+        } else {
+            layer.ctx.globalCompositeOperation = 'destination-out';
+            layer.ctx.strokeStyle = 'rgba(0,0,0,1)';
+        }
+        
+        layer.ctx.beginPath();
+        layer.ctx.moveTo(lastX, lastY);
         overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
     }
 
@@ -621,16 +737,17 @@
         lastKnownX = pos.x;
         lastKnownY = pos.y;
         if (drawing) {
-            if (currentTool === 'brush') {
-                ctx.strokeStyle = currentColor;
-            } else {
-                ctx.strokeStyle = 'white';
+            if (!layers.length || !layers[currentLayerIndex]) {
+                console.error('No layer selected');
+                return;
             }
-            ctx.lineWidth = brushSize;
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
+            const layer = layers[currentLayerIndex];
+            layer.ctx.lineWidth = brushSize;
+            layer.ctx.lineTo(pos.x, pos.y);
+            layer.ctx.stroke();
             lastX = pos.x;
             lastY = pos.y;
+            compositeLayers();
         } else {
             drawPreview(pos.x, pos.y);
         }
@@ -639,8 +756,14 @@
     function stopDrawing(e) {
         e.preventDefault();
         if (drawing) {
+            if (!layers.length || !layers[currentLayerIndex]) {
+                console.error('No layer selected');
+                return;
+            }
             drawing = false;
-            pushHistory();
+            const layer = layers[currentLayerIndex];
+            layer.ctx.globalCompositeOperation = 'source-over';
+            pushHistoryLayers();
         }
         if (mouseOverCanvas) {
             drawPreview(lastKnownX, lastKnownY);
@@ -669,11 +792,19 @@
     mainCanvas.addEventListener('touchcancel', stopDrawing);
 
     clearBtn.addEventListener('click', () => {
-        ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
-        overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-        pushHistory();
+        if (!layers.length || !layers[currentLayerIndex]) {
+            console.error('No layer selected');
+            return;
+        }
+        const layer = layers[currentLayerIndex];
+        if (currentLayerIndex === 0) {
+            layer.ctx.fillStyle = 'white';
+            layer.ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+        } else {
+            layer.ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+        }
+        compositeLayers();
+        pushHistoryLayers();
     });
 
     function isCanvasBlank() {
@@ -710,7 +841,201 @@
         openCaptcha(performSavePainting, imageData);
     });
 
-    // === Модальное окно для просмотра рисунков с навигацией ===
+    // === UI слоёв ===
+    const renameModal = document.getElementById('renameLayerModal');
+    const renameInput = document.getElementById('renameLayerInput');
+    const renameOk = document.getElementById('renameLayerOk');
+    const renameCancel = document.getElementById('renameLayerCancel');
+    const renameModalCloseBtn = document.getElementById('closeRenameModal');
+    let layerToRenameIndex = -1;
+
+    function openRenameModal(index) {
+        if (index === 0) {
+            triggerErrorEffect();
+            return;
+        }
+        layerToRenameIndex = index;
+        renameInput.value = layers[index].name;
+        renameModal.style.display = 'flex';
+        renameInput.focus();
+        disableBodyScroll();
+    }
+
+    function closeRenameModal() {
+        renameModal.style.display = 'none';
+        layerToRenameIndex = -1;
+        enableBodyScroll();
+    }
+
+    renameOk.addEventListener('click', () => {
+        const newName = renameInput.value.trim();
+        if (newName && layerToRenameIndex !== -1) {
+            layers[layerToRenameIndex].name = newName;
+            renderLayersUI();
+        }
+        closeRenameModal();
+    });
+
+    renameCancel.addEventListener('click', closeRenameModal);
+    renameModalCloseBtn.addEventListener('click', closeRenameModal);
+    renameModal.addEventListener('click', (e) => {
+        if (e.target === renameModal) closeRenameModal();
+    });
+
+    function renderLayersUI() {
+        const container = document.getElementById('layersList');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        layers.forEach((layer, index) => {
+            const div = document.createElement('div');
+            div.className = 'layer-item' + (index === currentLayerIndex ? ' active' : '');
+            div.dataset.index = index;
+            
+            const vis = document.createElement('div');
+            vis.className = 'layer-visibility ' + (layer.visible ? 'visible' : 'hidden');
+            vis.addEventListener('click', (e) => {
+                e.stopPropagation();
+                layer.visible = !layer.visible;
+                compositeLayers();
+                renderLayersUI();
+            });
+            div.appendChild(vis);
+            
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'layer-name';
+            nameSpan.textContent = layer.name;
+            nameSpan.addEventListener('dblclick', () => {
+                if (index === 0) {
+                    triggerErrorEffect();
+                    return;
+                }
+                openRenameModal(index);
+            });
+            div.appendChild(nameSpan);
+            
+            const opacityInput = document.createElement('input');
+            opacityInput.type = 'range';
+            opacityInput.min = 0;
+            opacityInput.max = 1;
+            opacityInput.step = 0.05;
+            opacityInput.value = layer.opacity;
+            opacityInput.className = 'layer-opacity';
+            opacityInput.addEventListener('input', (e) => {
+                layer.opacity = parseFloat(e.target.value);
+                compositeLayers();
+                renderLayersUI();
+            });
+            div.appendChild(opacityInput);
+            
+            const moveDiv = document.createElement('div');
+            moveDiv.className = 'layer-move';
+            
+            if (index > 1) {
+                const upBtn = document.createElement('button');
+                upBtn.textContent = '↑';
+                upBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    [layers[index-1], layers[index]] = [layers[index], layers[index-1]];
+                    if (currentLayerIndex === index) currentLayerIndex = index-1;
+                    else if (currentLayerIndex === index-1) currentLayerIndex = index;
+                    renderLayersUI();
+                    compositeLayers();
+                    pushHistoryLayers();
+                });
+                moveDiv.appendChild(upBtn);
+            }
+            
+            if (index < layers.length - 1 && index > 0) { // запрещаем движение вниз для Background
+                const downBtn = document.createElement('button');
+                downBtn.textContent = '↓';
+                downBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    [layers[index], layers[index+1]] = [layers[index+1], layers[index]];
+                    if (currentLayerIndex === index) currentLayerIndex = index+1;
+                    else if (currentLayerIndex === index+1) currentLayerIndex = index;
+                    renderLayersUI();
+                    compositeLayers();
+                    pushHistoryLayers();
+                });
+                moveDiv.appendChild(downBtn);
+            }
+            
+            div.appendChild(moveDiv);
+            
+            div.addEventListener('click', () => {
+                currentLayerIndex = index;
+                renderLayersUI();
+            });
+            
+            container.appendChild(div);
+        });
+    }
+
+    document.getElementById('addLayerBtn')?.addEventListener('click', () => {
+        if (layers.length >= 10) {
+            triggerErrorEffect();
+            return;
+        }
+        const newCanvas = document.createElement('canvas');
+        newCanvas.width = mainCanvas.width;
+        newCanvas.height = mainCanvas.height;
+        const newCtx = newCanvas.getContext('2d');
+        // Новый слой полностью прозрачный
+        
+        layers.push({
+            canvas: newCanvas,
+            ctx: newCtx,
+            visible: true,
+            opacity: 1,
+            name: `Layer ${layers.length + 1}`,
+            id: Date.now()
+        });
+        currentLayerIndex = layers.length - 1;
+        renderLayersUI();
+        compositeLayers();
+        pushHistoryLayers();
+    });
+
+    document.getElementById('deleteLayerBtn')?.addEventListener('click', () => {
+        if (layers.length <= 1) {
+            triggerErrorEffect();
+            return;
+        }
+        if (currentLayerIndex === 0) {
+            triggerErrorEffect();
+            return;
+        }
+        layers.splice(currentLayerIndex, 1);
+        if (currentLayerIndex >= layers.length) currentLayerIndex = layers.length - 1;
+        renderLayersUI();
+        compositeLayers();
+        pushHistoryLayers();
+    });
+
+    document.getElementById('mergeDownBtn')?.addEventListener('click', () => {
+        if (currentLayerIndex === 0) {
+            triggerErrorEffect();
+            return;
+        }
+        const bottomLayer = layers[currentLayerIndex - 1];
+        const topLayer = layers[currentLayerIndex];
+        
+        bottomLayer.ctx.save();
+        bottomLayer.ctx.globalAlpha = topLayer.opacity;
+        bottomLayer.ctx.drawImage(topLayer.canvas, 0, 0);
+        bottomLayer.ctx.restore();
+        
+        layers.splice(currentLayerIndex, 1);
+        currentLayerIndex--;
+        renderLayersUI();
+        compositeLayers();
+        pushHistoryLayers();
+    });
+
+    initLayers();
+
+    // === Модальное окно для просмотра рисунков ===
     const imageModal = document.getElementById('imageModal');
     const modalImage = document.getElementById('modalImage');
     const closeImageModal = document.getElementById('closeImageModal');
@@ -722,182 +1047,165 @@
     const modalRandomBtn = document.getElementById('modalRandomBtn');
     const loadingDiv = document.getElementById('modalLoading');
 
-    // === Управление прокруткой ===
-    function disableBodyScroll() {
-        document.body.classList.add('modal-open');
+    let currentModalId = null;
+    let allPaintings = [];
+    let allPaintingsLoaded = false;
+
+    async function loadAllPaintingsForNav() {
+        if (allPaintingsLoaded) return;
+        const { data, error } = await supabaseClient
+            .from('paintings')
+            .select('id')
+            .order('created_at', { ascending: false });
+        if (!error && data) {
+            allPaintings = data.map(p => p.id);
+            allPaintingsLoaded = true;
+        }
     }
-    function enableBodyScroll() {
-        document.body.classList.remove('modal-open');
-    }
 
-    let openImageModal = function(id) {
-        console.warn('openImageModal called but modal not initialized');
-    };
+    window.openImageModal = async function(id) {
+        await loadAllPaintingsForNav();
+        currentModalId = id;
 
-    if (imageModal && modalImage && closeImageModal && loadingDiv) {
-        let currentModalId = null;
-        let allPaintings = [];
-        let allPaintingsLoaded = false;
-
-        async function loadAllPaintingsForNav() {
-            if (allPaintingsLoaded) return;
-            const { data, error } = await supabaseClient
-                .from('paintings')
-                .select('id')
-                .order('created_at', { ascending: false });
-            if (!error && data) {
-                allPaintings = data.map(p => p.id);
-                allPaintingsLoaded = true;
-            }
+        loadingDiv.style.display = 'block';
+        modalImage.style.display = 'none';
+        if (modalLikes && modalLikes.parentElement) {
+            modalLikes.parentElement.style.display = 'none';
         }
 
-        openImageModal = async function(id) {
-            await loadAllPaintingsForNav();
-            currentModalId = id;
+        const { data, error } = await supabaseClient
+            .from('paintings')
+            .select('image_data, created_at, likes')
+            .eq('id', id)
+            .single();
 
-            // Показываем индикатор, прячем картинку и элементы
-            loadingDiv.style.display = 'block';
-            modalImage.style.display = 'none';
+        if (error || !data) {
+            loadingDiv.style.display = 'none';
+            modalImage.style.display = 'block';
+            modalImage.alt = 'Error loading image';
+            return;
+        }
+
+        modalImage.src = data.image_data;
+        modalImage.onload = () => {
+            loadingDiv.style.display = 'none';
+            modalImage.style.display = 'block';
             if (modalLikes && modalLikes.parentElement) {
-                modalLikes.parentElement.style.display = 'none';
+                modalLikes.parentElement.style.display = 'block';
             }
 
-            const { data, error } = await supabaseClient
-                .from('paintings')
-                .select('image_data, created_at, likes')
-                .eq('id', id)
-                .single();
+            modalLikes.textContent = data.likes || 0;
+            modalDate.textContent = new Date(data.created_at).toLocaleString();
 
-            if (error || !data) {
-                loadingDiv.style.display = 'none';
-                modalImage.style.display = 'block';
-                modalImage.alt = 'Error loading image';
-                return;
-            }
+            (async () => {
+                const { data: likesData } = await supabaseClient
+                    .from('painting_likes')
+                    .select('id')
+                    .eq('painting_id', id)
+                    .eq('visitor_id', visitorId);
+                const liked = likesData && likesData.length > 0;
 
-            modalImage.src = data.image_data;
-            modalImage.onload = () => {
-                loadingDiv.style.display = 'none';
-                modalImage.style.display = 'block';
-                if (modalLikes && modalLikes.parentElement) {
-                    modalLikes.parentElement.style.display = 'block';
+                modalLikeBtn.classList.remove('liked', 'unliked');
+                modalLikeBtn.classList.add(liked ? 'liked' : 'unliked');
+                modalLikeBtn.disabled = liked;
+
+                modalLikeBtn.onclick = null;
+                if (!liked) {
+                    modalLikeBtn.onclick = async () => {
+                        modalLikeBtn.disabled = true;
+                        const oldLikes = parseInt(modalLikes.textContent) || 0;
+                        modalLikes.textContent = oldLikes + 1;
+                        modalLikeBtn.classList.remove('unliked');
+                        modalLikeBtn.classList.add('liked');
+
+                        const { error: insertError } = await supabaseClient
+                            .from('painting_likes')
+                            .insert({ painting_id: id, visitor_id: visitorId });
+
+                        if (insertError && insertError.code !== '23505') {
+                            console.error(insertError);
+                            modalLikes.textContent = oldLikes;
+                            modalLikeBtn.classList.remove('liked');
+                            modalLikeBtn.classList.add('unliked');
+                            modalLikeBtn.disabled = false;
+                            return;
+                        }
+
+                        const { error: updateError } = await supabaseClient
+                            .rpc('increment_likes', { painting_id: id });
+                        if (updateError) console.error(updateError);
+
+                        myLikes.add(id);
+                        loadPaintings();
+                    };
                 }
-
-                modalLikes.textContent = data.likes || 0;
-                modalDate.textContent = new Date(data.created_at).toLocaleString();
-
-                (async () => {
-                    const { data: likesData } = await supabaseClient
-                        .from('painting_likes')
-                        .select('id')
-                        .eq('painting_id', id)
-                        .eq('visitor_id', visitorId);
-                    const liked = likesData && likesData.length > 0;
-
-                    // Обновляем классы кнопки лайка
-                    modalLikeBtn.classList.remove('liked', 'unliked');
-                    modalLikeBtn.classList.add(liked ? 'liked' : 'unliked');
-                    modalLikeBtn.disabled = liked;
-
-                    modalLikeBtn.onclick = null;
-                    if (!liked) {
-                        modalLikeBtn.onclick = async () => {
-                            modalLikeBtn.disabled = true;
-                            const oldLikes = parseInt(modalLikes.textContent) || 0;
-                            modalLikes.textContent = oldLikes + 1;
-                            modalLikeBtn.classList.remove('unliked');
-                            modalLikeBtn.classList.add('liked');
-
-                            const { error: insertError } = await supabaseClient
-                                .from('painting_likes')
-                                .insert({ painting_id: id, visitor_id: visitorId });
-
-                            if (insertError && insertError.code !== '23505') {
-                                console.error(insertError);
-                                modalLikes.textContent = oldLikes;
-                                modalLikeBtn.classList.remove('liked');
-                                modalLikeBtn.classList.add('unliked');
-                                modalLikeBtn.disabled = false;
-                                return;
-                            }
-
-                            const { error: updateError } = await supabaseClient
-                                .rpc('increment_likes', { painting_id: id });
-                            if (updateError) console.error(updateError);
-
-                            myLikes.add(id);
-                            loadPaintings();
-                        };
-                    }
-                })();
-            };
-
-            modalImage.onerror = () => {
-                loadingDiv.style.display = 'none';
-                modalImage.style.display = 'block';
-                modalImage.alt = 'Failed to load image';
-            };
-
-            imageModal.style.display = 'flex';
-            disableBodyScroll(); // блокируем прокрутку
+            })();
         };
 
-        function closeImageModalFunc() {
-            imageModal.style.display = 'none';
-            modalImage.src = '';
-            currentModalId = null;
-            enableBodyScroll(); // разблокируем
-        }
+        modalImage.onerror = () => {
+            loadingDiv.style.display = 'none';
+            modalImage.style.display = 'block';
+            modalImage.alt = 'Failed to load image';
+        };
 
-        closeImageModal.addEventListener('click', closeImageModalFunc);
-        imageModal.addEventListener('click', (e) => {
-            if (e.target === imageModal) closeImageModalFunc();
-        });
+        imageModal.style.display = 'flex';
+        disableBodyScroll();
+    };
 
-        if (modalPrevBtn && modalNextBtn && modalRandomBtn) {
-            modalPrevBtn.addEventListener('click', () => {
-                if (!currentModalId || allPaintings.length === 0) return;
-                const idx = allPaintings.indexOf(currentModalId);
-                if (idx > 0) openImageModal(allPaintings[idx - 1]);
-            });
-
-            modalNextBtn.addEventListener('click', () => {
-                if (!currentModalId || allPaintings.length === 0) return;
-                const idx = allPaintings.indexOf(currentModalId);
-                if (idx < allPaintings.length - 1) openImageModal(allPaintings[idx + 1]);
-            });
-
-            modalRandomBtn.addEventListener('click', () => {
-                if (allPaintings.length === 0) return;
-                const randomIdx = Math.floor(Math.random() * allPaintings.length);
-                openImageModal(allPaintings[randomIdx]);
-            });
-        }
+    function closeImageModalFunc() {
+        imageModal.style.display = 'none';
+        modalImage.src = '';
+        currentModalId = null;
+        enableBodyScroll();
     }
 
-    // === ЛАЙКИ ===
-    const VISITOR_KEY = 'visitor_id';
+    closeImageModal.addEventListener('click', closeImageModalFunc);
+    imageModal.addEventListener('click', (e) => {
+        if (e.target === imageModal) closeImageModalFunc();
+    });
 
+    if (modalPrevBtn && modalNextBtn && modalRandomBtn) {
+        modalPrevBtn.addEventListener('click', () => {
+            if (!currentModalId || allPaintings.length === 0) return;
+            const idx = allPaintings.indexOf(currentModalId);
+            if (idx > 0) openImageModal(allPaintings[idx - 1]);
+        });
+
+        modalNextBtn.addEventListener('click', () => {
+            if (!currentModalId || allPaintings.length === 0) return;
+            const idx = allPaintings.indexOf(currentModalId);
+            if (idx < allPaintings.length - 1) openImageModal(allPaintings[idx + 1]);
+        });
+
+        modalRandomBtn.addEventListener('click', () => {
+            if (allPaintings.length === 0) return;
+            const randomIdx = Math.floor(Math.random() * allPaintings.length);
+            openImageModal(allPaintings[randomIdx]);
+        });
+    }
+
+    // === Лайки ===
+    const VISITOR_KEY = 'visitor_id';
     function generateVisitorId() {
         if (typeof crypto !== 'undefined' && crypto.randomUUID) {
             return crypto.randomUUID();
         }
         return 'visitor_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
-
     function getVisitorId() {
         let id = localStorage.getItem(VISITOR_KEY);
         if (!id) {
             id = generateVisitorId();
             localStorage.setItem(VISITOR_KEY, id);
-            console.log('Generated new visitor ID:', id);
-        } else {
-            console.log('Existing visitor ID:', id);
         }
         return id;
     }
-
     const visitorId = getVisitorId();
+
+    let currentPage = 0;
+    const pageSize = 6;
+    let totalPaintings = 0;
+    let totalPages = 0;
     let myLikes = new Set();
     let sparkleInterval = null;
 
@@ -911,7 +1219,6 @@
                 console.error('Error loading my likes:', error);
             } else {
                 myLikes = new Set(data.map(row => row.painting_id));
-                console.log('Loaded my likes:', myLikes);
             }
         } catch (err) {
             console.error('Unexpected error loading likes:', err);
@@ -919,8 +1226,6 @@
     }
 
     async function likePainting(paintingId, buttonElement, likeCountElement) {
-        console.log('Attempting to like painting:', paintingId);
-
         buttonElement.disabled = true;
         buttonElement.classList.remove('unliked');
         buttonElement.classList.add('liked');
@@ -933,14 +1238,12 @@
                 .insert({ painting_id: paintingId, visitor_id: visitorId });
 
             if (insertError) {
-                console.log('Insert error:', insertError);
                 if (insertError.code === '23505') {
-                    console.log('Already liked this painting');
                     buttonElement.disabled = false;
                     buttonElement.classList.remove('liked');
                     buttonElement.classList.add('unliked');
                     likeCountElement.textContent = currentLikes;
-                    alert('You have already liked this painting!');
+                    triggerErrorEffect();
                     return;
                 } else {
                     throw insertError;
@@ -953,7 +1256,6 @@
             if (updateError) throw updateError;
 
             myLikes.add(paintingId);
-            console.log('Like successful, added to myLikes');
             playChimesSound();
             loadPaintings();
 
@@ -967,7 +1269,6 @@
         }
     }
 
-    // === Звёздочки ===
     function addSparkles(container) {
         const sparkleCount = 8;
         const sparkles = [];
@@ -1012,17 +1313,26 @@
         sparkleInterval = setInterval(updateSparklesPositions, 2000);
     }
 
-    // === Загрузка рисунков для галереи ===
     async function loadPaintings() {
+        const offset = currentPage * pageSize;
         const { data, error } = await supabaseClient
             .from('paintings')
             .select('id, image_data, created_at, likes')
             .order('created_at', { ascending: false })
-            .limit(6);
+            .range(offset, offset + pageSize - 1);
+
         if (error) {
             console.error('Error loading paintings:', error);
             return;
         }
+
+        if (totalPaintings === 0) {
+            await loadTotalCount();
+        }
+
+        document.getElementById('prevPageBtn').disabled = currentPage === 0;
+        document.getElementById('nextPageBtn').disabled = currentPage >= totalPages - 1;
+        document.getElementById('pageIndicator').textContent = `Page ${currentPage + 1}`;
 
         let maxLikes = 0;
         data.forEach(p => {
@@ -1100,6 +1410,16 @@
         });
     }
 
+    async function loadTotalCount() {
+        const { count, error } = await supabaseClient
+            .from('paintings')
+            .select('*', { count: 'exact', head: true });
+        if (!error) {
+            totalPaintings = count;
+            totalPages = Math.ceil(totalPaintings / pageSize);
+        }
+    }
+
     // === Навигация по меню ===
     const menuItems = document.querySelectorAll('#menu li');
     const sections = {
@@ -1133,15 +1453,62 @@
         link.addEventListener('click', e => e.preventDefault());
     });
 
-    // === Запуск загрузки гостевой книги и лайков ===
-    loadGuestbook();
+    // === Управление прокруткой ===
+    function disableBodyScroll() {
+        document.body.classList.add('modal-open');
+    }
+    function enableBodyScroll() {
+        document.body.classList.remove('modal-open');
+    }
+
+    // === Загрузка данных ===
+    loadGuestbook(0);
     (async () => {
         await loadMyLikes();
+        await loadTotalCount();
         loadPaintings();
     })();
 
+    // Realtime подписка
     supabaseClient
         .channel('guestbook_changes')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guestbook' }, () => loadGuestbook())
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guestbook' }, () => {
+            guestbookCurrentPage = 0;
+            loadGuestbook(0);
+        })
         .subscribe();
+
+    // === Пагинация гостевой книги (обработчики) ===
+    if (guestbookPrevBtn) {
+        guestbookPrevBtn.addEventListener('click', () => {
+            if (guestbookCurrentPage > 0) {
+                loadGuestbook(guestbookCurrentPage - 1);
+            }
+        });
+    }
+    if (guestbookNextBtn) {
+        guestbookNextBtn.addEventListener('click', () => {
+            if (guestbookCurrentPage < guestbookTotalPages - 1) {
+                loadGuestbook(guestbookCurrentPage + 1);
+            }
+        });
+    }
+
+    // === Пагинация галереи ===
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+    if (prevPageBtn && nextPageBtn) {
+        prevPageBtn.addEventListener('click', async () => {
+            if (currentPage > 0) {
+                currentPage--;
+                await loadPaintings();
+            }
+        });
+        nextPageBtn.addEventListener('click', async () => {
+            if (currentPage < totalPages - 1) {
+                currentPage++;
+                await loadPaintings();
+            }
+        });
+    }
 })();

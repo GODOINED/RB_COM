@@ -115,6 +115,8 @@ body.modal-open {
     flex-direction: column;
     overflow: hidden;
     margin: 0 auto;
+    position: relative;
+    z-index: 2000;
 }
 
 .window-title {
@@ -240,7 +242,7 @@ body.modal-open {
     height: 600px;
 }
 
-/* Стилизация SimpleBar под Windows 95 */
+/* Стилизация SimpleBar под Windows 95 (для правой панели) */
 .simplebar-track {
     background: #c0c0c0;
     border: 2px solid #ffffff;
@@ -291,6 +293,43 @@ body.modal-open {
 
 .simplebar-content {
     padding: 15px 22px 15px 15px !important;
+}
+
+/* Список слоёв: простой нативный скроллбар */
+#layersList {
+    max-height: 150px;
+    background: #ffffff;
+    border: 2px inset;
+    padding: 4px;
+    overflow: hidden; /* скрываем всё, что выходит за пределы */
+}
+
+/* Для Chrome/Edge/Safari */
+#layersList::-webkit-scrollbar {
+    width: 16px;
+    background: #c0c0c0;
+    border: 2px solid #ffffff;
+    border-right-color: #808080;
+    border-bottom-color: #808080;
+}
+#layersList::-webkit-scrollbar-thumb {
+    background: #c0c0c0;
+    border: 2px solid #ffffff;
+    border-right-color: #808080;
+    border-bottom-color: #808080;
+    min-height: 40px;
+}
+#layersList::-webkit-scrollbar-thumb:hover {
+    background: #a0a0a0;
+}
+#layersList::-webkit-scrollbar-track {
+    background: #808080;
+    border: 2px solid #ffffff;
+    border-right-color: #808080;
+    border-bottom-color: #808080;
+}
+#layersList::-webkit-scrollbar-button {
+    display: none;
 }
 
 .section h2 {
@@ -601,8 +640,8 @@ body.modal-open {
     padding: 0;
     transition: transform 0.1s;
     vertical-align: middle;
-    image-rendering: pixelated; /* для чёткости */
-    image-rendering: crisp-edges; /* запасной вариант */
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
 }
 
 .like-button:hover:not(:disabled) {
@@ -703,6 +742,154 @@ body.modal-open {
 }
 .loading-dots {
     animation: blinkDots 1s infinite;
+}
+
+/* ===== Стили для слоёв ===== */
+.layer-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px;
+    margin: 2px 0;
+    background: #d4d0c8;
+    border: 2px solid #808080;
+    border-top-color: #ffffff;
+    border-left-color: #ffffff;
+    cursor: default;
+}
+.layer-item.active {
+    background: #000080;
+    color: white;
+}
+.layer-item.active input,
+.layer-item.active span {
+    color: white;
+}
+.layer-visibility {
+    width: 20px;
+    height: 20px;
+    background: #c0c0c0;
+    border: 2px solid #808080;
+    border-top-color: #ffffff;
+    border-left-color: #ffffff;
+    text-align: center;
+    line-height: 16px;
+    cursor: pointer;
+}
+
+.layer-visibility.visible {
+    background-image: url('materialsl/eye-open.png'); /* путь к твоему файлу */
+    image-rendering: pixelated;
+    background-size: cover
+}
+
+.layer-visibility.hidden {
+    background-image: url('materialsl/eye-closed.png'); /* если есть */
+    image-rendering: pixelated;
+    background-size: cover
+    /* или можно сделать прозрачным: background-image: none; */
+}
+
+.layer-visibility.visible::before,
+.layer-visibility.hidden::before {
+    content: none;
+}
+
+.layer-name {
+    flex: 1;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.layer-opacity {
+    width: 60px;
+}
+.layer-move {
+    display: flex;
+    gap: 2px;
+}
+.layer-move button {
+    width: 22px;
+    height: 22px;
+    background: #c0c0c0;
+    border: 2px solid #ffffff;
+    border-right-color: #808080;
+    border-bottom-color: #808080;
+    font-size: 12px;
+    line-height: 18px;
+    cursor: default;
+}
+.layer-move button:active {
+    border: 2px solid #808080;
+    border-right-color: #ffffff;
+    border-bottom-color: #ffffff;
+}
+
+/* ===== Модальное окно для переименования слоя ===== */
+.rename-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 40000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+.rename-modal {
+    background-color: #c0c0c0;
+    border: 2px solid #ffffff;
+    border-right-color: #404040;
+    border-bottom-color: #404040;
+    padding: 0;
+    width: 300px;
+    box-shadow: 2px 2px 0px #00000080;
+    font-family: 'W95Font', 'MS Sans Serif', sans-serif;
+}
+.rename-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(90deg, #000080, #1084d0);
+    color: white;
+    padding: 5px 5px 5px 10px;
+    font-weight: bold;
+}
+.rename-modal-header .close {
+    width: 24px; height: 24px;
+    background: #c0c0c0;
+    border: 2px solid #ffffff;
+    border-right-color: #808080;
+    border-bottom-color: #808080;
+    color: black; text-align: center; line-height: 20px; cursor: default; font-size: 18px;
+}
+.rename-modal-header .close:active {
+    border: 2px solid #808080;
+    border-right-color: #ffffff;
+    border-bottom-color: #ffffff;
+}
+.rename-modal-content {
+    padding: 20px;
+}
+.rename-input {
+    width: 100%;
+    padding: 4px;
+    border: 2px inset #ffffff;
+    background: #fff;
+    font-family: inherit;
+    margin-bottom: 15px;
+    box-sizing: border-box;
+}
+.rename-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+.rename-buttons button {
+    min-width: 80px;
 }
 
 /* ===== Адаптация ===== */
