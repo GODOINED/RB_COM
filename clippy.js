@@ -1,13 +1,13 @@
-// clippy.js — анимированный помощник с 36-кадровым разговором (один раз) и 2-кадровым морганием
+// clippy.js — с правильными путями (без ведущих слешей)
 
 (function() {
     // ===== НАСТРОЙКИ =====
-    const BLINK_FRAME_INTERVAL = 100;          // мс между кадрами моргания
-    const TALK_FRAME_INTERVAL = 150;           // мс между кадрами разговора
-    const TALK_FRAMES_COUNT = 36;               // количество кадров разговора
+    const BLINK_FRAME_INTERVAL = 100;
+    const TALK_FRAME_INTERVAL = 150;
+    const TALK_FRAMES_COUNT = 36;
     const MESSAGE_DURATION = TALK_FRAMES_COUNT * TALK_FRAME_INTERVAL; // 5400 мс
-    const BLINK_INTERVAL_MIN = 3000;            // мин. интервал между морганиями
-    const BLINK_INTERVAL_MAX = 7000;            // макс. интервал
+    const BLINK_INTERVAL_MIN = 3000;
+    const BLINK_INTERVAL_MAX = 7000;
 
     // ===== КАДРЫ АНИМАЦИЙ =====
     const frames = {
@@ -19,13 +19,11 @@
         talk1: []
     };
 
-    // Генерация 36 кадров для talk1 (имена frame01.png ... frame36.png)
     for (let i = 3; i <= TALK_FRAMES_COUNT; i++) {
         const num = i.toString().padStart(2, '0');
         frames.talk1.push(`materialsl/clippy/talk1/frame${num}.png`);
     }
 
-    // Массив доступных анимаций разговора
     const talkAnimations = ['talk1'];
 
     // ===== СООБЩЕНИЯ =====
@@ -44,7 +42,6 @@
         "I'm not a real paperclip, but I try my best."
     ];
 
-    // ===== ЭЛЕМЕНТЫ =====
     const clippyContainer = document.getElementById('clippyContainer');
     const clippyMessage = document.getElementById('clippyMessage');
     const clippyImage = document.getElementById('clippyImage');
@@ -54,7 +51,6 @@
         return;
     }
 
-    // ===== СОСТОЯНИЕ =====
     let currentState = 'idle';
     let currentTalkAnim = 'talk1';
     let animationInterval = null;
@@ -63,7 +59,6 @@
     let blinkTimeout = null;
     let currentFrame = 0;
 
-    // ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
     function stopAnimation() {
         if (animationInterval) {
             clearInterval(animationInterval);
@@ -78,7 +73,6 @@
         scheduleBlink();
     }
 
-    // Моргание (один раз)
     function playBlink() {
         stopAnimation();
         currentState = 'blink';
@@ -99,7 +93,6 @@
         animationInterval = setInterval(step, BLINK_FRAME_INTERVAL);
     }
 
-    // Однократная анимация разговора (36 кадров)
     function playTalkAnimation() {
         stopAnimation();
 
@@ -120,10 +113,9 @@
                 clippyImage.src = talkFrames[currentFrame];
                 currentFrame++;
             } else {
-                // Анимация закончилась – останавливаем интервал, остаёмся на последнем кадре
                 clearInterval(animationInterval);
                 animationInterval = null;
-                console.log('Talk animation finished, staying on last frame.');
+                // остаёмся на последнем кадре
             }
         };
 
@@ -144,19 +136,17 @@
         blinkTimeout = setTimeout(startBlink, delay);
     }
 
-    // Показать сообщение и запустить однократную анимацию разговора
     function showClippyMessage(message) {
         clippyMessage.textContent = message;
-        clippyContainer.classList.add('show'); // облачко
+        clippyContainer.classList.add('show');
 
         if (blinkTimeout) clearTimeout(blinkTimeout);
-
-        playTalkAnimation(); // запускаем однократную анимацию
+        playTalkAnimation();
 
         if (hideTimeout) clearTimeout(hideTimeout);
         hideTimeout = setTimeout(() => {
-            clippyContainer.classList.remove('show'); // прячем облачко
-            setIdle(); // после исчезновения облачка возвращаемся в idle
+            clippyContainer.classList.remove('show');
+            setIdle();
         }, MESSAGE_DURATION);
     }
 
@@ -164,24 +154,21 @@
         return messages[Math.floor(Math.random() * messages.length)];
     }
 
-    // Планирование следующего сообщения
     function scheduleMessage() {
-        const delay = Math.random() * 15000 + 15000; // 15–30 сек
+        const delay = Math.random() * 15000 + 15000;
         messageTimeout = setTimeout(() => {
             showClippyMessage(randomMessage());
-            scheduleMessage(); // следующее
+            scheduleMessage();
         }, delay);
     }
 
-    // ===== ОБРАБОТЧИК КЛИКА =====
     clippyImage.addEventListener('click', () => {
         showClippyMessage(randomMessage());
         if (messageTimeout) clearTimeout(messageTimeout);
         scheduleMessage();
     });
 
-    // ===== ИНИЦИАЛИЗАЦИЯ =====
     clippyContainer.style.display = 'flex';
     setIdle();
-    scheduleMessage(); // первое сообщение через 15–30 сек
+    scheduleMessage();
 })();

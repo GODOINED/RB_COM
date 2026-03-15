@@ -1,4 +1,4 @@
-/* style.css — финальная версия с исправлением отступов списка */
+/* style.css — финальная версия с правильными путями */
 
 @font-face {
     font-family: 'W95Font';
@@ -199,7 +199,7 @@ body {
 
 .folder-list {
     list-style: none;
-    padding-inline-start: 0; /* убираем стандартный отступ списка */
+    padding-inline-start: 0;
     margin: 0;
 }
 .folder-list li {
@@ -511,14 +511,21 @@ body {
     bottom: 20px;
     right: 20px;
     z-index: 30000;
-    pointer-events: none; /* чтобы клики проходили сквозь контейнер, но картинка их ловит */
+    pointer-events: none;
 }
-
+.clippy-character {
+    width: 80px;
+    height: auto;
+    display: block;
+    pointer-events: auto;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
 .clippy-bubble {
     position: absolute;
-    bottom: 100%;        /* располагается над картинкой */
-    right: 0;             /* прижато к правому краю картинки */
-    margin-bottom: 8px;   /* отступ от картинки */
+    bottom: 100%;
+    right: 0;
+    margin-bottom: 8px;
     background-color: #ffffe1;
     border: 2px solid #000080;
     border-radius: 5px;
@@ -530,37 +537,21 @@ body {
     max-width: 200px;
     word-wrap: break-word;
     white-space: normal;
-    display: none;        /* скрыто по умолчанию */
+    display: none;
 }
-
+.clippy-container.show .clippy-bubble {
+    display: block;
+}
 .clippy-bubble::after {
     content: '';
     position: absolute;
     bottom: -10px;
-    right: 15px;          /* подстройте под своё изображение */
+    right: 15px;
     width: 0;
     height: 0;
     border-left: 10px solid transparent;
     border-right: 10px solid transparent;
     border-top: 10px solid #ffffe1;
-}
-
-.clippy-character {
-    width: 180px;
-    height: auto;
-    display: block;
-    pointer-events: auto; /* картинка кликабельна */
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-}
-
-.clippy-container.show {
-    display: flex;
-    animation: clippyFadeIn 0.3s ease-out;
-}
-
-.clippy-container.show .clippy-bubble {
-    display: block;
 }
 
 .status-bar {
