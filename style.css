@@ -1,4 +1,4 @@
-/* style.css — Windows 95, острые углы, тёмный градиент, поддержка настроек */
+/* style.css — финальная версия с исправлением отступов списка */
 
 @font-face {
     font-family: 'W95Font';
@@ -7,7 +7,6 @@
     font-weight: normal;
     font-style: normal;
 }
-
 @font-face {
     font-family: 'W95Font';
     src: url('webfont/w95font-bold.woff2') format('woff2'),
@@ -16,12 +15,75 @@
     font-style: normal;
 }
 
+@keyframes shake {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    50% { transform: translateX(5px); }
+    75% { transform: translateX(-5px); }
+    100% { transform: translateX(0); }
+}
+.error-effect {
+    animation: shake 0.3s ease-in-out;
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.7);
+    transition: box-shadow 0.1s;
+}
+.color-palette {
+    display: grid;
+    grid-template-columns: repeat(4, 30px);
+    gap: 4px;
+    justify-content: center;
+    margin: 10px 0;
+}
+.color-swatch {
+    width: 30px;
+    height: 30px;
+    border: 2px solid #808080;
+    border-top-color: #ffffff;
+    border-left-color: #ffffff;
+    cursor: pointer;
+}
+.color-swatch.active {
+    border: 2px solid #000080;
+    border-top-color: #ffffff;
+    border-left-color: #ffffff;
+}
+.tool-button.active {
+    background: #808080;
+    border: 2px solid #808080;
+    border-top-color: #ffffff;
+    border-left-color: #ffffff;
+}
+input[type=range] {
+    -webkit-appearance: none;
+    background: transparent;
+}
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    background: #c0c0c0;
+    border: 1px solid #808080;
+    border-top-color: #ffffff;
+    border-left-color: #ffffff;
+}
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 20px;
+    background: #c0c0c0;
+    border: 2px solid #ffffff;
+    border-right-color: #808080;
+    border-bottom-color: #808080;
+    cursor: default;
+    margin-top: -8px;
+}
+input[type=range]:focus {
+    outline: none;
+}
+
 * {
-    margin: 0;
-    padding: 0;
+    font-size: 15px;
     box-sizing: border-box;
     font-family: 'W95Font', 'MS Sans Serif', 'Microsoft Sans Serif', 'Tahoma', 'Arial', sans-serif;
-    font-size: 12px;
 }
 
 body {
@@ -30,12 +92,12 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    margin: 0;
     padding: 10px;
-    transition: background 0.3s ease; /* плавное переключение темы */
 }
 
 .win95-window {
-    width: 900px;
+    width: 1200px;
     max-width: 95vw;
     max-height: 95vh;
     background-color: #c0c0c0;
@@ -46,6 +108,7 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    margin: 0 auto;
 }
 
 .window-title {
@@ -59,42 +122,15 @@ body {
     border-bottom: 2px solid #ffffff;
     flex-shrink: 0;
 }
-
-.title-text {
-    flex-grow: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.title-buttons {
-    display: flex;
-    gap: 2px;
-    flex-shrink: 0;
-}
-
+.title-text { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title-buttons { display: flex; gap: 2px; flex-shrink: 0; }
 .title-buttons button {
-    width: 24px;
-    height: 24px;
-    background: #c0c0c0;
-    border: 2px solid #ffffff;
-    border-right-color: #808080;
-    border-bottom-color: #808080;
-    color: black;
-    font-weight: bold;
-    text-align: center;
-    line-height: 20px;
-    cursor: default;
-    font-size: 16px;
-    font-family: 'W95Font', 'MS Sans Serif', sans-serif;
-    padding: 0;
+    width: 24px; height: 24px; background: #c0c0c0;
+    border: 2px solid #ffffff; border-right-color: #808080; border-bottom-color: #808080;
+    color: black; font-weight: bold; text-align: center; line-height: 20px;
+    cursor: default; font-size: 16px; font-family: 'W95Font', 'MS Sans Serif', sans-serif; padding: 0;
 }
-
-.title-buttons button:active {
-    border: 2px solid #808080;
-    border-right-color: #ffffff;
-    border-bottom-color: #ffffff;
-}
+.title-buttons button:active { border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; }
 
 .menu-bar {
     display: flex;
@@ -104,13 +140,11 @@ body {
     border-bottom: 2px solid #ffffff;
     flex-shrink: 0;
 }
-
 .menu-item {
     cursor: default;
     font-size: 12px;
     padding: 2px 4px;
 }
-
 .menu-item:hover {
     background: #000080;
     color: white;
@@ -124,10 +158,8 @@ body {
     border-bottom: 2px solid #ffffff;
     flex-shrink: 0;
 }
-
 .tool-button {
-    width: 26px;
-    height: 26px;
+    width: 26px; height: 26px;
     background: #c0c0c0;
     border: 2px solid #ffffff;
     border-right-color: #808080;
@@ -138,7 +170,6 @@ body {
     align-items: center;
     justify-content: center;
 }
-
 .tool-button:active {
     border: 2px solid #808080;
     border-right-color: #ffffff;
@@ -155,7 +186,7 @@ body {
 }
 
 .left-panel {
-    width: 160px;
+    width: 220px;
     background: #ffffff;
     border: 2px solid #808080;
     border-right-color: #ffffff;
@@ -168,25 +199,27 @@ body {
 
 .folder-list {
     list-style: none;
+    padding-inline-start: 0; /* убираем стандартный отступ списка */
+    margin: 0;
 }
-
 .folder-list li {
     padding: 6px 8px;
     margin: 2px 0;
     cursor: default;
     font-size: 12px;
+    border-bottom: 1px dotted #808080;
 }
-
+.folder-list li:last-child {
+    border-bottom: none;
+}
 .folder-list li a {
     color: #000080;
     text-decoration: none;
     display: block;
 }
-
 .folder-list li.selected {
     background: #000080;
 }
-
 .folder-list li.selected a {
     color: white;
 }
@@ -198,13 +231,10 @@ body {
     border-right-color: #ffffff;
     border-bottom-color: #ffffff;
     padding: 0;
-    height: 500px;
+    height: 600px;
 }
 
-.simplebar-content {
-    padding: 15px 22px 15px 15px !important;
-}
-
+/* Стилизация SimpleBar под Windows 95 */
 .simplebar-track {
     background: #c0c0c0;
     border: 2px solid #ffffff;
@@ -212,7 +242,6 @@ body {
     border-bottom-color: #808080;
     width: 18px !important;
 }
-
 .simplebar-scrollbar::before {
     background: #c0c0c0;
     border: 2px solid #ffffff;
@@ -225,11 +254,6 @@ body {
     top: 0;
     bottom: 0;
 }
-
-.simplebar-scrollbar.simplebar-visible::before {
-    opacity: 1 !important;
-}
-
 .simplebar-track.vertical::before,
 .simplebar-track.vertical::after {
     content: '';
@@ -245,21 +269,22 @@ body {
     background-position: center;
     z-index: 1;
 }
-
 .simplebar-track.vertical::before {
     top: 0;
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4" viewBox="0 0 8 4"><polygon points="0,4 4,0 8,4" fill="black"/></svg>');
 }
-
 .simplebar-track.vertical::after {
     bottom: 0;
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="8" height="4" viewBox="0 0 8 4"><polygon points="0,0 4,4 8,0" fill="black"/></svg>');
 }
-
 .simplebar-track .simplebar-scrollbar {
     top: 18px !important;
     bottom: 18px !important;
     height: auto !important;
+}
+
+.simplebar-content {
+    padding: 15px 22px 15px 15px !important;
 }
 
 .section h2 {
@@ -267,29 +292,24 @@ body {
     font-weight: bold;
     margin-bottom: 12px;
     color: #000080;
-    border-bottom: 2px solid #808080;
+    border-bottom: 2px dotted #808080;
     padding-bottom: 4px;
 }
-
 .about-content {
     display: flex;
     gap: 20px;
     font-size: 12px;
 }
-
 .about-text {
     flex: 2;
 }
-
 .about-text p {
     margin-bottom: 8px;
 }
-
 .about-photo {
     flex: 1;
     text-align: center;
 }
-
 .about-photo img {
     width: 120px;
     height: 120px;
@@ -303,10 +323,9 @@ body {
 
 .projects-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 15px;
 }
-
 .project-item {
     background: #c0c0c0;
     border: 2px solid #ffffff;
@@ -317,10 +336,9 @@ body {
     max-width: 100%;
     word-wrap: break-word;
 }
-
 .project-cover {
     width: 100%;
-    height: 110px;
+    height: 120px;
     background: #808080;
     border: 2px solid #808080;
     border-right-color: #ffffff;
@@ -328,26 +346,23 @@ body {
     margin-bottom: 8px;
     overflow: hidden;
 }
-
 .project-cover img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
-
 .project-title {
     font-weight: bold;
     font-size: 12px;
     margin-bottom: 4px;
 }
-
 .project-desc {
     font-size: 11px;
     color: #404040;
     margin-bottom: 10px;
 }
-
-.project-button {
+.project-button, a.project-button {
+    display: inline-block;
     background: #c0c0c0;
     border: 2px solid #ffffff;
     border-right-color: #808080;
@@ -356,12 +371,196 @@ body {
     font-size: 12px;
     cursor: default;
     font-family: 'W95Font', 'MS Sans Serif', sans-serif;
+    text-decoration: none;
+    color: black;
 }
-
-.project-button:active {
+.project-button:active, a.project-button:active {
     border: 2px solid #808080;
     border-right-color: #ffffff;
     border-bottom-color: #ffffff;
+}
+
+.canvas-container {
+    position: relative;
+    width: 570px;
+    height: 270px;
+    border: 3px solid #ffffff;
+    border-right-color: #404040;
+    border-bottom-color: #404040;
+    background: white;
+    box-sizing: content-box;
+    flex-shrink: 0;
+    box-shadow: inset 0 0 0 1px #808080, 2px 2px 0px #00000080;
+}
+.canvas-container canvas {
+    display: block;
+    width: 570px;
+    height: 270px;
+    background: white;
+    border: none;
+}
+#overlayCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 570px;
+    height: 270px;
+    pointer-events: none;
+    background-color: transparent;
+}
+
+.paint-panel {
+    flex: 0 0 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.paint-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: nowrap;
+    padding-bottom: 5px;
+}
+
+.guestbook-messages {
+    margin-top: 20px;
+}
+
+.captcha-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+.captcha-modal {
+    background-color: #c0c0c0;
+    border: 2px solid #ffffff;
+    border-right-color: #404040;
+    border-bottom-color: #404040;
+    padding: 20px;
+    width: 300px;
+    box-shadow: 2px 2px 0px #00000080;
+    font-family: 'W95Font', 'MS Sans Serif', sans-serif;
+}
+.captcha-modal h3 { margin-top: 0; text-align: center; color: #000080; }
+.captcha-question { font-size: 18px; text-align: center; margin: 15px 0; }
+.captcha-input { width: 100%; padding: 4px; border: 2px inset #ffffff; background: #fff; font-family: inherit; box-sizing: border-box; }
+.captcha-input.error { background-color: #ffcccc; }
+.captcha-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+.captcha-buttons button { min-width: 80px; }
+.shake-modal { animation: shake 0.3s ease-in-out; }
+
+.image-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 20000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+.image-modal {
+    background-color: #c0c0c0;
+    border: 2px solid #ffffff;
+    border-right-color: #404040;
+    border-bottom-color: #404040;
+    padding: 10px;
+    max-width: 90vw;
+    max-height: 90vh;
+    box-shadow: 2px 2px 0px #00000080;
+    display: flex;
+    flex-direction: column;
+}
+.image-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(90deg, #000080, #1084d0);
+    color: white;
+    padding: 5px 5px 5px 10px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+.image-modal-header .title { font-size: 14px; }
+.image-modal-header .close {
+    width: 24px; height: 24px;
+    background: #c0c0c0;
+    border: 2px solid #ffffff;
+    border-right-color: #808080;
+    border-bottom-color: #808080;
+    color: black; text-align: center; line-height: 20px; cursor: default; font-size: 18px;
+    font-family: 'W95Font', 'MS Sans Serif', sans-serif;
+}
+.image-modal-header .close:active { border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; }
+.image-modal-content { overflow: auto; text-align: center; }
+.image-modal-content img { max-width: 100%; max-height: 70vh; border: 2px solid #808080; border-top-color: #ffffff; border-left-color: #ffffff; background: white; }
+
+#paintGallery img { cursor: pointer; }
+
+.clippy-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 30000;
+    pointer-events: none; /* чтобы клики проходили сквозь контейнер, но картинка их ловит */
+}
+
+.clippy-bubble {
+    position: absolute;
+    bottom: 100%;        /* располагается над картинкой */
+    right: 0;             /* прижато к правому краю картинки */
+    margin-bottom: 8px;   /* отступ от картинки */
+    background-color: #ffffe1;
+    border: 2px solid #000080;
+    border-radius: 5px;
+    padding: 8px 12px;
+    font-family: 'W95Font', 'MS Sans Serif', sans-serif;
+    font-size: 13px;
+    color: black;
+    box-shadow: 2px 2px 0px #00000080;
+    max-width: 200px;
+    word-wrap: break-word;
+    white-space: normal;
+    display: none;        /* скрыто по умолчанию */
+}
+
+.clippy-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    right: 15px;          /* подстройте под своё изображение */
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 10px solid #ffffe1;
+}
+
+.clippy-character {
+    width: 180px;
+    height: auto;
+    display: block;
+    pointer-events: auto; /* картинка кликабельна */
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+.clippy-container.show {
+    display: flex;
+    animation: clippyFadeIn 0.3s ease-out;
+}
+
+.clippy-container.show .clippy-bubble {
+    display: block;
 }
 
 .status-bar {
@@ -373,51 +572,29 @@ body {
     font-size: 12px;
     flex-shrink: 0;
 }
-
-a {
-    color: #000080;
-    text-decoration: none;
+.status-bar span {
+    border-right: 1px dotted #808080;
+    padding-right: 12px;
+}
+.status-bar span:last-child {
+    border-right: none;
 }
 
-a:hover {
-    text-decoration: underline;
+@media (max-width: 800px) {
+    .left-panel { width: 150px; }
+    .paint-row { flex-wrap: wrap !important; }
+    .canvas-container { width: 100%; height: auto; max-width: 570px; margin: 0 auto; }
+    .canvas-container canvas { width: 100%; height: auto; }
+    .paint-panel { flex: 0 0 100%; width: 100%; }
+    .paint-panel > div:first-child { flex-wrap: wrap; }
+    * { font-size: 14px; }
+    .project-button, a.project-button, .tool-button { padding: 4px 8px; font-size: 12px; }
+    #paintGallery { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
 }
-
-@media (max-width: 700px) {
-    .win95-window {
-        width: 100%;
-        max-width: 100%;
-    }
-    .left-panel {
-        width: 130px;
-    }
-    .projects-grid {
-        grid-template-columns: 1fr;
-    }
-    .about-content {
-        flex-direction: column;
-    }
-    .about-photo img {
-        margin: 0 auto;
-    }
-}
-
-/* Дополнительные стили для гостевой книги */
-.guestbook-form input,
-.guestbook-form textarea {
-    font-family: 'W95Font', 'MS Sans Serif', sans-serif;
-    font-size: 12px;
-    background: #ffffff;
-    border: 2px solid #808080;
-    border-top-color: #ffffff;
-    border-left-color: #ffffff;
-}
-
-.guestbook-form button {
-    width: 100%;
-    margin-top: 5px;
-}
-
-.guestbook-messages {
-    margin-top: 20px;
+@media (max-width: 500px) {
+    .left-panel { width: 120px; }
+    .paint-panel > div:first-child button,
+    .paint-panel > div:first-child a.project-button { font-size: 11px; padding: 3px 4px; }
+    #paintGallery { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
+    .color-swatch { width: 25px; height: 25px; }
 }
