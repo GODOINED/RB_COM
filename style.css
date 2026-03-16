@@ -2,15 +2,15 @@
 
 @font-face {
     font-family: 'W95Font';
-    src: url('webfont/w95font.woff2') format('woff2'),
-         url('webfont/w95font.woff') format('woff');
+    src: url('webfont/MSW98UI-Regular.woff2') format('woff2'),
+         url('webfont/MSW98UI-Regular.woff') format('woff');
     font-weight: normal;
     font-style: normal;
 }
 @font-face {
     font-family: 'W95Font';
-    src: url('webfont/w95font-bold.woff2') format('woff2'),
-         url('webfont/w95font-bold.woff') format('woff');
+    src: url('webfont/MSW98UI-Bold.woff2') format('woff2'),
+         url('webfont/MSW98UI-Bold.woff') format('woff');
     font-weight: bold;
     font-style: normal;
 }
