@@ -50,7 +50,7 @@
                         <div class="about-text">
                             <p><strong>Name:</strong> Robert</p>
                             <p><strong>Occupation:</strong> Gamedev, gamer, 3D artist</p>
-                            <p><strong>About me:</strong> I'm a furry bear :3 and I love to play and create creative content, I adore plush toys</p>
+                            <p><strong>About me:</strong> Furry bear and femboy :3, i love playing game</p>
                             <p><strong>Contact:</strong> Discord: RB_COM#8016</p>
                         </div>
                         <div class="about-photo">
@@ -151,7 +151,7 @@
                     </div>
 
                     <!-- Панель слоёв -->
-                    <div class="layers-panel" style="margin-top: 20px; border: 2px solid #808080; padding: 8px; background: #c0c0c0;">
+                    <div class="layers-panel" style="margin-top: 20px; border: 2px solid; padding: 8px;">
                         <div style="display: flex; gap: 5px; margin-bottom: 8px; flex-wrap: wrap;">
                             <button id="addLayerBtn" class="project-button">➕ Add layer</button>
                             <button id="deleteLayerBtn" class="project-button">➖ Delete layer</button>
@@ -166,33 +166,6 @@
                         <button id="prevPageBtn" class="project-button" disabled>← Previous page</button>
                         <span id="pageIndicator" style="align-self: center; font-size: 12px;">Page 1</span>
                         <button id="nextPageBtn" class="project-button" disabled>Next page →</button>
-                    </div>
-                </div>
-
-                <!-- Модальное окно для просмотра рисунков -->
-                <div class="image-modal-overlay" id="imageModal">
-                    <div class="image-modal">
-                        <div class="image-modal-header">
-                            <span class="title">View Painting</span>
-                            <span class="close" id="closeImageModal">×</span>
-                        </div>
-                        <div class="image-modal-content">
-                            <img id="modalImage" src="" alt="Full size painting">
-                            <div id="modalLoading" style="text-align: center; margin: 10px 0; font-family: 'W95Font', monospace; color: #000080; display: none;">
-                                <span>Loading</span>
-                                <span class="loading-dots">...</span>
-                            </div>
-                            <div style="margin-top: 10px;">
-                                <span id="modalLikes">0</span> likes
-                                <button id="modalLikeBtn" class="like-button"></button>
-                                <div id="modalDate" style="font-size: 11px; color: #404040; margin-top: 5px;"></div>
-                            </div>
-                            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
-                                <button id="modalPrevBtn" class="project-button">← Previous</button>
-                                <button id="modalRandomBtn" class="project-button">🎲 Random</button>
-                                <button id="modalNextBtn" class="project-button">Next →</button>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -223,6 +196,33 @@
         </div>
     </div>
 
+    <!-- Модальное окно для просмотра рисунков -->
+    <div class="image-modal-overlay" id="imageModal">
+        <div class="image-modal">
+            <div class="image-modal-header">
+                <span class="title">View Painting</span>
+                <span class="close" id="closeImageModal">×</span>
+            </div>
+            <div class="image-modal-content">
+                <img id="modalImage" src="" alt="Full size painting">
+                <div id="modalLoading" style="text-align: center; margin: 10px 0; font-family: 'W95Font', monospace; color: #000080; display: none;">
+                    <span>Loading</span>
+                    <span class="loading-dots">...</span>
+                </div>
+                <div style="margin-top: 10px;">
+                    <span id="modalLikes">0</span> likes
+                    <button id="modalLikeBtn" class="like-button"></button>
+                    <div id="modalDate" style="font-size: 11px; color: #404040; margin-top: 5px;"></div>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+                    <button id="modalPrevBtn" class="project-button">← Previous</button>
+                    <button id="modalRandomBtn" class="project-button">🎲 Random</button>
+                    <button id="modalNextBtn" class="project-button">Next →</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Модальное окно капчи -->
     <div class="captcha-overlay" id="captchaOverlay">
         <div class="captcha-modal" id="captchaModal">
@@ -263,7 +263,7 @@
     <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="clippy.js"></script>
-    <script src="custom_wallpaper.js"></script>
+    <!-- <script src="custom_wallpaper.js"></script> --> <!-- Отключено для совместимости -->
     <script src="main.js"></script>
 </body>
 </html>

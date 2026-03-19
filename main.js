@@ -1,4 +1,4 @@
-// main.js — финальная версия с прозрачными слоями, модальным окном переименования, защитой Background, пагинацией, кастомным фоном и красным оверлеем
+// main.js — версия с поддержкой CSS-переменных для фона
 (function() {
     // === Звуки ===
     const clickSoundUrl = 'sounds/click.mp3';
@@ -55,33 +55,59 @@
     const body = document.body;
     const win95Window = document.querySelector('.win95-window');
 
-    let originalBackground = body.style.background;
     let customWallpaperLoaded = false;
 
+    // Новая функция установки обоев через CSS-переменные
     function setWallpaper(type) {
+        // Останавливаем кастомный фон, если он был запущен
         if (window.CustomWallpaper && typeof window.CustomWallpaper.stop === 'function') {
             window.CustomWallpaper.stop();
         }
 
-        let gradient;
+        // Определяем цвета для каждого типа
+        let color1, color2, color3;
         switch(type) {
-            case 'dark': gradient = 'linear-gradient(145deg, #1e1e1e 0%, #2d2d2d 100%)'; break;
-            case 'blue': gradient = 'linear-gradient(145deg, #003399 0%, #3366cc 100%)'; break;
-            case 'green': gradient = 'linear-gradient(145deg, #004d40 0%, #008b74 100%)'; break;
-            case 'gray': gradient = 'linear-gradient(145deg, #505050 0%, #808080 100%)'; break;
+            case 'dark':
+                color1 = '#1e1e1e';
+                color2 = '#2d2d2d';
+                color3 = '#3a3a3a';
+                break;
+            case 'blue':
+                color1 = '#003399';
+                color2 = '#3366cc';
+                color3 = '#1e4d99';
+                break;
+            case 'green':
+                color1 = '#004d40';
+                color2 = '#008b74';
+                color3 = '#006b5a';
+                break;
+            case 'gray':
+                color1 = '#505050';
+                color2 = '#808080';
+                color3 = '#6a6a6a';
+                break;
             case 'custom':
-                body.style.background = 'none';
-                originalBackground = 'none';
+                // Для кастомного режима запускаем отдельный скрипт
+                // Сбрасываем inline-стили, чтобы не мешать CSS-анимации
+                body.style.background = '';
                 if (window.CustomWallpaper) {
                     window.CustomWallpaper.start();
                 } else {
                     loadCustomWallpaperScript();
                 }
+                return; // для custom не меняем переменные
+            default:
                 return;
-            default: gradient = 'linear-gradient(145deg, #1e1e1e 0%, #2d2d2d 100%)';
         }
-        body.style.background = gradient;
-        originalBackground = gradient;
+
+        // Устанавливаем CSS-переменные для градиента
+        document.documentElement.style.setProperty('--bg-color1', color1);
+        document.documentElement.style.setProperty('--bg-color2', color2);
+        document.documentElement.style.setProperty('--bg-color3', color3);
+
+        // Сбрасываем inline-стиль body (на случай, если там что-то было)
+        body.style.background = '';
     }
 
     function loadCustomWallpaperScript() {
@@ -94,7 +120,8 @@
         };
         script.onerror = function() {
             console.error('Failed to load custom wallpaper');
-            body.style.background = 'linear-gradient(145deg, #1e1e1e 0%, #2d2d2d 100%)';
+            // Если не загрузился, ставим тёмный фон через переменные
+            setWallpaper('dark');
         };
         document.head.appendChild(script);
     }
@@ -293,14 +320,16 @@
         playChordSound();
         win95Window.classList.add('error-effect');
         
-        // Красный оверлей под окном, над фоном
+        // Красный оверлей под окном – используем CSS-переменную для цвета
         const overlay = document.createElement('div');
         overlay.style.position = 'fixed';
         overlay.style.top = '0';
         overlay.style.left = '0';
         overlay.style.width = '100%';
         overlay.style.height = '100%';
-        overlay.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+        // Берём цвет из CSS-переменной, если она есть, иначе запасной
+        const overlayColor = getComputedStyle(document.documentElement).getPropertyValue('--error-overlay').trim();
+        overlay.style.backgroundColor = overlayColor || 'rgba(255, 0, 0, 0.3)';
         overlay.style.zIndex = '1500';
         overlay.style.pointerEvents = 'none';
         document.body.appendChild(overlay);
@@ -1346,6 +1375,7 @@
             const isTop = (p.likes === maxLikes && maxLikes > 0);
 
             const imgDiv = document.createElement('div');
+            imgDiv.classList.add('painting');
             imgDiv.style.border = '2px solid #808080';
             imgDiv.style.borderRightColor = '#ffffff';
             imgDiv.style.borderBottomColor = '#ffffff';

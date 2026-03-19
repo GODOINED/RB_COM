@@ -1,5 +1,105 @@
-/* style.css — финальная версия с кастомными сердечками и блокировкой прокрутки */
+/* ===== ПОЛНОСТЬЮ КАСТОМИЗИРУЕМЫЙ СТИЛЬ С АНИМИРОВАННЫМИ ГРАДИЕНТАМИ ===== */
+:root {
+    /* Основные цвета интерфейса */
+    --win-gray: #81397b;
+    --win-dark-gray: #ac64a6;
+    --win-darker: #5e2659;
+    --win-light: #a84ea1;
+    --win-black: #000000;
+    --win-shadow: #00000080;
 
+    /* Заголовок окна (статичный градиент по умолчанию) */
+    --title-start: #7c0080;
+    --title-end: #ba10d0;
+    --title-text: #ffffff;
+    --title-text-gray: #d88fd8;
+
+    /* Выделение и ссылки */
+    --highlight-bg: #9d35a7;
+    --highlight-text: #ffffff;
+    --link-color: #7c0080;
+
+    /* Гостевая книга */
+    --gb-bg: #b955b1;
+    --gb-border: #d66fce;
+    --gb-border-light: #8b3d85;
+    --gb-text-muted: #412d40;
+    --gb-input-bg: #81397b;
+    --gb-input-border: #ffffff;
+    --gb-text: #ffffff;
+
+    /* Слои */
+    --layer-bg: #b955b1;
+    --layer-border: #8b3d85;
+    --layer-border-light: #d66fce;
+    --layer-background-bg: #b955b1;
+    --layer-border: #b955b1;
+    --layer-active-bg: #6b0080;
+    --layer-active-text: #ffffff;
+    --layer-visibility-bg: #ae6cbe;
+    --layer-visibility-border: #803180;
+    --layer-move-btn-bg: #b955b1;
+    --layer-move-btn-border-light: #d66fce;
+    --layer-move-btn-border-dark: #8b3d85;
+
+    /* Кнопки */
+    --button-bg: #a7499f;
+    --button-border-light: #d66fce;
+    --button-border-dark: #753070;
+    --button-active-bg: #74316e;
+    --button-active-border-light: #7c3b77;
+    --button-active-border-dark: #80397a;
+    --button-text-color: #ffffff;
+
+    /* Модальные окна */
+    --modal-overlay: rgba(0, 0, 0, 0.7);
+    --modal-overlay-dark: rgba(0, 0, 0, 0.8);
+    --modal-bg: #81397b;
+    --modal-border-light: #af5fa9;
+    --modal-border-dark: #572452;
+    --modal-header-start: #660080;
+    --modal-header-end: #6b3a77;
+    --modal-header-text: #ffffff;
+    --modal-close-bg: #c0c0c0;
+    --modal-close-border-light: #f5adff;
+    --modal-close-border-dark: #75327e;
+    --modal-input-border: #f5adff;
+    --modal-input-bg: #ffffff;
+    --modal-error-bg: #ffcccc;
+
+    /* Статус-бар */
+    --status-bg: #6e3370;
+    --status-border: #9144a8;
+    --status-dot: #eb2beb;
+
+    /* Популярный рисунок */
+    --top-bg: #ffe246;
+    --top-border: gold;
+    --top-border-dark: #b8860b;
+
+    /* Ошибка */
+    --error-shadow: rgba(255, 0, 0, 0.7);
+    --error-overlay: rgba(255, 0, 0, 0.3);
+
+    /* Clippy */
+    --clippy-bubble-bg: #ffffe1;
+    --clippy-bubble-border: #000080;
+
+    /* Анимированный фон страницы (по умолчанию тёмный градиент) */
+    --bg-color1: #1e1e1e;
+    --bg-color2: #2d2d2d;
+    --bg-color3: #3a3a3a;
+
+    /* Дополнительные переменные для анимированных градиентов интерфейса */
+    /* Раскомментируй и настрой, чтобы включить анимацию для окна и заголовка */
+    --win-bg-gradient: linear-gradient(45deg, #492045,#81397b);
+    --win-bg-animation: win98Gradient 5s linear infinite;
+    --title-gradient: linear-gradient(90deg, #660080, #6b3a77, #660080);
+    --title-animation: win98Gradient 15s linear infinite;
+    --gradient-size: 200% 200%; /* Раскомментировано, чтобы градиент был заметен */
+}
+
+/* ===== ШРИФТЫ ===== */
 @font-face {
     font-family: 'W95Font';
     src: url('webfont/MSW98UI-Regular.woff2') format('woff2'),
@@ -15,6 +115,7 @@
     font-style: normal;
 }
 
+/* ===== АНИМАЦИИ ===== */
 @keyframes shake {
     0% { transform: translateX(0); }
     25% { transform: translateX(-5px); }
@@ -22,72 +123,52 @@
     75% { transform: translateX(-5px); }
     100% { transform: translateX(0); }
 }
-.error-effect {
-    animation: shake 0.3s ease-in-out;
-    box-shadow: 0 0 20px rgba(255, 0, 0, 0.7);
-    transition: box-shadow 0.1s;
+@keyframes win98Gradient {
+    0% { background-position: 0% 0%; }
+    50% { background-position: 100% 100%; }
+    100% { background-position: 0% 0%; }
 }
-.color-palette {
-    display: grid;
-    grid-template-columns: repeat(4, 30px);
-    gap: 4px;
-    justify-content: center;
-    margin: 10px 0;
+@keyframes softGlow {
+    from { box-shadow: 0 0 5px gold, 0 0 10px gold; }
+    to { box-shadow: 0 0 15px gold, 0 0 25px #ffd700; }
 }
-.color-swatch {
-    width: 30px;
-    height: 30px;
-    border: 2px solid #808080;
-    border-top-color: #ffffff;
-    border-left-color: #ffffff;
-    cursor: pointer;
+@keyframes whiteLine {
+    0% { background-position: -200% -200%; }
+    100% { background-position: 200% 200%; opacity: 1; }
 }
-.color-swatch.active {
-    border: 2px solid #000080;
-    border-top-color: #ffffff;
-    border-left-color: #ffffff;
+@keyframes sparkleTwinkle {
+    0% { transform: scale(0) rotate(0deg); opacity: 0; }
+    20% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+    40% { transform: scale(0.8) rotate(360deg); opacity: 0.8; }
+    60% { transform: scale(0.5) rotate(540deg); opacity: 0.4; }
+    80% { transform: scale(0.2) rotate(720deg); opacity: 0.1; }
+    100% { transform: scale(0) rotate(900deg); opacity: 0; }
 }
-.tool-button.active {
-    background: #808080;
-    border: 2px solid #808080;
-    border-top-color: #ffffff;
-    border-left-color: #ffffff;
-}
-input[type=range] {
-    -webkit-appearance: none;
-    background: transparent;
-}
-input[type=range]::-webkit-slider-runnable-track {
-    width: 100%;
-    height: 4px;
-    background: #c0c0c0;
-    border: 1px solid #808080;
-    border-top-color: #ffffff;
-    border-left-color: #ffffff;
-}
-input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 12px;
-    height: 20px;
-    background: #c0c0c0;
-    border: 2px solid #ffffff;
-    border-right-color: #808080;
-    border-bottom-color: #808080;
-    cursor: default;
-    margin-top: -8px;
-}
-input[type=range]:focus {
-    outline: none;
+@keyframes blinkDots {
+    0% { opacity: 0; }
+    50% { opacity: 1; }
+    100% { opacity: 0; }
 }
 
+/* ===== ОСНОВНЫЕ СТИЛИ ===== */
 * {
     font-size: 15px;
     box-sizing: border-box;
     font-family: 'W95Font', 'MS Sans Serif', 'Microsoft Sans Serif', 'Tahoma', 'Arial', sans-serif;
 }
 
+/* Анимированный фон страницы */
 body {
-    background: linear-gradient(145deg, #1e1e1e 0%, #2d2d2d 100%);
+    background: linear-gradient(
+        45deg,
+        var(--bg-color1) 0%,
+        var(--bg-color2) 25%,
+        var(--bg-color3) 50%,
+        var(--bg-color2) 75%,
+        var(--bg-color1) 100%
+    );
+    background-size: var(--gradient-size, 400% 400%);
+    animation: win98Gradient 24s ease infinite;
     min-height: 100vh;
     display: flex;
     justify-content: center;
@@ -99,18 +180,22 @@ body {
 /* Блокировка прокрутки при открытых модальных окнах */
 body.modal-open {
     overflow: hidden;
-    padding-right: 18px; /* компенсируем ширину скроллбара, чтобы контент не прыгал */
+    padding-right: 18px;
 }
 
+/* ===== ГЛАВНОЕ ОКНО ===== */
 .win95-window {
+    /* По умолчанию сплошной цвет. Если задан --win-bg-gradient, используем его и анимацию */
+    background: var(--win-bg-gradient, var(--win-gray));
+    background-size: var(--gradient-size, auto);
+    animation: var(--win-bg-animation, none);
     width: 1200px;
     max-width: 95vw;
     max-height: 95vh;
-    background-color: #c0c0c0;
-    border: 2px solid #ffffff;
-    border-right-color: #404040;
-    border-bottom-color: #404040;
-    box-shadow: 2px 2px 0px #00000080;
+    border: 2px solid var(--win-light);
+    border-right-color: var(--win-darker);
+    border-bottom-color: var(--win-darker);
+    box-shadow: 2px 2px 0px var(--win-shadow);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -119,33 +204,62 @@ body.modal-open {
     z-index: 2000;
 }
 
+/* Заголовок окна */
 .window-title {
-    background: linear-gradient(90deg, #000080, #1084d0);
-    color: white;
+    /* По умолчанию статичный градиент. Если задан --title-gradient, используем его и анимацию */
+    background: var(--title-gradient, linear-gradient(90deg, var(--title-start), var(--title-end)));
+    background-size: var(--gradient-size, auto);
+    animation: var(--title-animation, none);
+    color: var(--title-text);
     padding: 4px 4px 4px 8px;
     display: flex;
     align-items: center;
     font-weight: bold;
     font-size: 13px;
-    border-bottom: 2px solid #ffffff;
+    border-bottom: 2px solid var(--win-light);
     flex-shrink: 0;
 }
-.title-text { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.title-buttons { display: flex; gap: 2px; flex-shrink: 0; }
-.title-buttons button {
-    width: 24px; height: 24px; background: #c0c0c0;
-    border: 2px solid #ffffff; border-right-color: #808080; border-bottom-color: #808080;
-    color: black; font-weight: bold; text-align: center; line-height: 20px;
-    cursor: default; font-size: 16px; font-family: 'W95Font', 'MS Sans Serif', sans-serif; padding: 0;
+.title-text {
+    flex-grow: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
-.title-buttons button:active { border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; }
+.title-buttons {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+.title-buttons button {
+    width: 24px;
+    height: 24px;
+    background: var(--win-gray);
+    border: 2px solid var(--win-light);
+    border-right-color: var(--win-dark-gray);
+    border-bottom-color: var(--win-dark-gray);
+    color: var(--win-black);
+    font-weight: bold;
+    text-align: center;
+    line-height: 20px;
+    cursor: default;
+    font-size: 16px;
+    font-family: 'W95Font', 'MS Sans Serif', sans-serif;
+    padding: 0;
+    color: var(--title-text);
+}
+.title-buttons button:active {
+    border: 2px solid var(--win-dark-gray);
+    border-right-color: var(--win-light);
+    border-bottom-color: var(--win-light);
+}
 
+/* Меню */
 .menu-bar {
     display: flex;
-    background: #c0c0c0;
+    background: var(--win-gray);
     padding: 4px 8px;
     gap: 20px;
-    border-bottom: 2px solid #ffffff;
+    border-bottom: 2px solid var(--win-light);
     flex-shrink: 0;
 }
 .menu-item {
@@ -154,24 +268,26 @@ body.modal-open {
     padding: 2px 4px;
 }
 .menu-item:hover {
-    background: #000080;
-    color: white;
+    background: var(--highlight-bg);
+    color: var(--highlight-text);
 }
 
+/* Панель инструментов */
 .toolbar {
     display: flex;
-    background: #c0c0c0;
+    background: var(--win-gray);
     padding: 4px;
     gap: 4px;
-    border-bottom: 2px solid #ffffff;
+    border-bottom: 2px solid var(--win-light);
     flex-shrink: 0;
 }
 .tool-button {
-    width: 26px; height: 26px;
-    background: #c0c0c0;
-    border: 2px solid #ffffff;
-    border-right-color: #808080;
-    border-bottom-color: #808080;
+    width: 26px;
+    height: 26px;
+    background: var(--win-gray);
+    border: 2px solid var(--win-light);
+    border-right-color: var(--win-dark-gray);
+    border-bottom-color: var(--win-dark-gray);
     font-size: 16px;
     cursor: default;
     display: flex;
@@ -179,14 +295,21 @@ body.modal-open {
     justify-content: center;
 }
 .tool-button:active {
-    border: 2px solid #808080;
-    border-right-color: #ffffff;
-    border-bottom-color: #ffffff;
+    border: 2px solid var(--win-dark-gray);
+    border-right-color: var(--win-light);
+    border-bottom-color: var(--win-light);
+}
+.tool-button.active {
+    background: var(--button-active-bg);
+    border: 2px solid var(--button-active-bg);
+    border-top-color: var(--win-light);
+    border-left-color: var(--win-light);
 }
 
+/* ===== КОНТЕНТ ===== */
 .window-content {
     display: flex;
-    background: #c0c0c0;
+    background: transparent; /*Убираем фон*/
     padding: 8px;
     gap: 8px;
     flex: 1;
@@ -195,10 +318,10 @@ body.modal-open {
 
 .left-panel {
     width: 220px;
-    background: #ffffff;
-    border: 2px solid #808080;
-    border-right-color: #ffffff;
-    border-bottom-color: #ffffff;
+    background: var(--win-light);
+    border: 2px solid var(--win-dark-gray);
+    border-right-color: var(--win-light);
+    border-bottom-color: var(--win-light);
     padding: 4px;
     overflow-y: auto;
     height: 100%;
@@ -215,46 +338,50 @@ body.modal-open {
     margin: 2px 0;
     cursor: default;
     font-size: 12px;
-    border-bottom: 1px dotted #808080;
+    border-bottom: 1px dotted var(--win-dark-gray);
+    
+    
 }
 .folder-list li:last-child {
     border-bottom: none;
+    
 }
 .folder-list li a {
-    color: #000080;
+    color: var(--link-color);
     text-decoration: none;
     display: block;
+    
 }
 .folder-list li.selected {
-    background: #000080;
+    background: var(--highlight-bg);
 }
 .folder-list li.selected a {
-    color: white;
+    color: var(--highlight-text);
 }
 
 .right-panel {
     flex-grow: 1;
-    background: #ffffff;
-    border: 2px solid #808080;
-    border-right-color: #ffffff;
-    border-bottom-color: #ffffff;
+    background: var(--win-light);
+    border: 2px solid var(--win-dark-gray);
+    border-right-color: var(--win-light);
+    border-bottom-color: var(--win-light);
     padding: 0;
     height: 600px;
 }
 
-/* Стилизация SimpleBar под Windows 95 (для правой панели) */
+/* SimpleBar */
 .simplebar-track {
-    background: #c0c0c0;
-    border: 2px solid #ffffff;
-    border-right-color: #808080;
-    border-bottom-color: #808080;
+    background: var(--win-gray);
+    border: 2px solid var(--win-light);
+    border-right-color: var(--win-dark-gray);
+    border-bottom-color: var(--win-dark-gray);
     width: 18px !important;
 }
 .simplebar-scrollbar::before {
-    background: #c0c0c0;
-    border: 2px solid #ffffff;
-    border-right-color: #808080;
-    border-bottom-color: #808080;
+    background: var(--win-gray);
+    border: 2px solid var(--win-light);
+    border-right-color: var(--win-dark-gray);
+    border-bottom-color: var(--win-dark-gray);
     border-radius: 0;
     opacity: 1 !important;
     left: 0;
@@ -269,10 +396,10 @@ body.modal-open {
     left: 0;
     width: 100%;
     height: 18px;
-    background: #c0c0c0;
-    border: 2px solid #ffffff;
-    border-right-color: #808080;
-    border-bottom-color: #808080;
+    background: var(--win-gray);
+    border: 2px solid var(--win-light);
+    border-right-color: var(--win-dark-gray);
+    border-bottom-color: var(--win-dark-gray);
     background-repeat: no-repeat;
     background-position: center;
     z-index: 1;
@@ -290,54 +417,56 @@ body.modal-open {
     bottom: 18px !important;
     height: auto !important;
 }
-
 .simplebar-content {
     padding: 15px 22px 15px 15px !important;
 }
 
-/* Список слоёв: простой нативный скроллбар */
+/* Список слоёв */
 #layersList {
     max-height: 150px;
-    background: #ffffff;
+    background-color: var(--button-active-border-dark) !important;
+    border-right-color: var(--win-light) !important;
+    border-bottom-color: var(--win-light) !important;
+    border-left-color: var(--win-dark-gray) !important;
+    border-top-color: var(--win-dark-gray) !important;
     border: 2px inset;
     padding: 4px;
-    overflow: hidden; /* скрываем всё, что выходит за пределы */
+    overflow: hidden;
 }
-
-/* Для Chrome/Edge/Safari */
 #layersList::-webkit-scrollbar {
     width: 16px;
-    background: #c0c0c0;
-    border: 2px solid #ffffff;
-    border-right-color: #808080;
-    border-bottom-color: #808080;
+    background: var(--win-gray);
+    border: 2px solid var(--win-light);
+    border-right-color: var(--win-dark-gray);
+    border-bottom-color: var(--win-dark-gray);
 }
 #layersList::-webkit-scrollbar-thumb {
-    background: #c0c0c0;
-    border: 2px solid #ffffff;
-    border-right-color: #808080;
-    border-bottom-color: #808080;
+    background: var(--win-gray);
+    border: 2px solid var(--win-light);
+    border-right-color: var(--win-dark-gray);
+    border-bottom-color: var(--win-dark-gray);
     min-height: 40px;
 }
 #layersList::-webkit-scrollbar-thumb:hover {
     background: #a0a0a0;
 }
 #layersList::-webkit-scrollbar-track {
-    background: #808080;
-    border: 2px solid #ffffff;
-    border-right-color: #808080;
-    border-bottom-color: #808080;
+    background: var(--win-dark-gray);
+    border: 2px solid var(--win-light);
+    border-right-color: var(--win-dark-gray);
+    border-bottom-color: var(--win-dark-gray);
 }
 #layersList::-webkit-scrollbar-button {
     display: none;
 }
 
+/* Секции */
 .section h2 {
     font-size: 16px;
     font-weight: bold;
     margin-bottom: 12px;
-    color: #000080;
-    border-bottom: 2px dotted #808080;
+    color: var(--title-start);
+    border-bottom: 2px dotted var(--button-border-light);
     padding-bottom: 4px;
 }
 .about-content {
@@ -347,35 +476,41 @@ body.modal-open {
 }
 .about-text {
     flex: 2;
+    color: var(--title-text);
 }
 .about-text p {
     margin-bottom: 8px;
 }
 .about-photo {
-    flex: 1;
+    flex: 0.5;
     text-align: center;
 }
 .about-photo img {
-    width: 120px;
-    height: 120px;
-    border: 2px solid #808080;
-    border-right-color: #ffffff;
-    border-bottom-color: #ffffff;
-    background: #c0c0c0;
+    width: 160px;
+    height: 160px;
+    border: 4px solid var(--win-dark-gray);
+    border-right-color: var(--win-darker);
+    border-bottom-color: var(--win-darker);
+    background: var(--win-gray);
     max-width: 100%;
     height: auto;
 }
 
+.friends-content {
+    color: var(--title-text);
+}
+
+/* Проекты */
 .projects-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 15px;
 }
 .project-item {
-    background: #c0c0c0;
-    border: 2px solid #ffffff;
-    border-right-color: #808080;
-    border-bottom-color: #808080;
+    background: var(--win-gray);
+    border: 2px solid var(--win-light);
+    border-right-color: var(--win-dark-gray);
+    border-bottom-color: var(--win-dark-gray);
     padding: 10px;
     text-align: center;
     max-width: 100%;
@@ -384,10 +519,10 @@ body.modal-open {
 .project-cover {
     width: 100%;
     height: 120px;
-    background: #808080;
-    border: 2px solid #808080;
-    border-right-color: #ffffff;
-    border-bottom-color: #ffffff;
+    background: var(--win-dark-gray);
+    border: 2px solid var(--win-dark-gray);
+    border-right-color: var(--win-light);
+    border-bottom-color: var(--win-light);
     margin-bottom: 8px;
     overflow: hidden;
 }
@@ -400,42 +535,44 @@ body.modal-open {
     font-weight: bold;
     font-size: 12px;
     margin-bottom: 4px;
+    color: var(--button-text-color);
 }
 .project-desc {
     font-size: 11px;
-    color: #404040;
+    color: var(--title-text-gray);
     margin-bottom: 10px;
 }
 .project-button, a.project-button {
     display: inline-block;
-    background: #c0c0c0;
-    border: 2px solid #ffffff;
-    border-right-color: #808080;
-    border-bottom-color: #808080;
+    background: var(--button-bg);
+    border: 2px solid var(--button-border-light);
+    border-right-color: var(--button-border-dark);
+    border-bottom-color: var(--button-border-dark);
     padding: 5px 12px;
     font-size: 12px;
     cursor: default;
     font-family: 'W95Font', 'MS Sans Serif', sans-serif;
     text-decoration: none;
-    color: black;
+    color: var(--button-text-color);
 }
 .project-button:active, a.project-button:active {
-    border: 2px solid #808080;
-    border-right-color: #ffffff;
-    border-bottom-color: #ffffff;
+    border: 2px solid var(--button-active-bg);
+    border-right-color: var(--button-active-border-light);
+    border-bottom-color: var(--button-active-border-light);
 }
 
+/* Paint */
 .canvas-container {
     position: relative;
     width: 570px;
     height: 380px;
-    border: 3px solid #ffffff;
-    border-right-color: #404040;
-    border-bottom-color: #404040;
+    border: 3px solid var(--win-light);
+    border-right-color: var(--win-darker);
+    border-bottom-color: var(--win-darker);
     background: white;
     box-sizing: content-box;
     flex-shrink: 0;
-    box-shadow: inset 0 0 0 1px #808080, 2px 2px 0px #00000080;
+    box-shadow: inset 0 0 0 1px var(--win-dark-gray), 2px 2px 0px var(--win-shadow);
 }
 .canvas-container canvas {
     display: block;
@@ -453,12 +590,12 @@ body.modal-open {
     pointer-events: none;
     background-color: transparent;
 }
-
 .paint-panel {
     flex: 0 0 300px;
     display: flex;
     flex-direction: column;
     gap: 15px;
+    color: var(--title-text)
 }
 .paint-row {
     display: flex;
@@ -467,39 +604,150 @@ body.modal-open {
     padding-bottom: 5px;
 }
 
-.guestbook-messages {
-    margin-top: 20px;
+.color-palette {
+    display: grid;
+    grid-template-columns: repeat(4, 30px);
+    gap: 4px;
+    justify-content: center;
+    margin: 10px 0;
+}
+.color-swatch {
+    width: 30px;
+    height: 30px;
+    border: 2px solid var(--win-dark-gray);
+    border-top-color: var(--win-light);
+    border-left-color: var(--win-light);
+    cursor: pointer;
+}
+.color-swatch.active {
+    border: 2px solid var(--title-start);
+    border-top-color: var(--win-light);
+    border-left-color: var(--win-light);
+}
+input[type=range] {
+    -webkit-appearance: none;
+    background: transparent;
+}
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    background: var(--win-gray);
+    border: 1px solid var(--win-dark-gray);
+    border-top-color: var(--win-light);
+    border-left-color: var(--win-light);
+}
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 20px;
+    background: var(--win-gray);
+    border: 2px solid var(--win-light);
+    border-right-color: var(--win-dark-gray);
+    border-bottom-color: var(--win-dark-gray);
+    cursor: default;
+    margin-top: -8px;
+}
+input[type=range]:focus {
+    outline: none;
 }
 
+#guestbookPageIndicator{
+    color: var(--title-text);
+}
+
+/* ===== ГОСТЕВАЯ КНИГА (полная кастомизация через !important) ===== */
+.guestbook-messages {
+    margin-top: 20px;
+    
+}
+
+.guestbook-form{
+    color: var(--link-color)
+}
+
+/* Переопределяем инлайн-стили сообщений */
+#gbMessages > div {
+    border: 2px solid var(--gb-border) !important;
+    border-right-color: var(--gb-border-light) !important;
+    border-bottom-color: var(--gb-border-light) !important;
+    background-color: var(--gb-bg) !important;
+    color: var(--gb-text);
+    padding: 8px !important;
+    margin-bottom: 10px !important;
+}
+
+/* Дата в сообщении */
+#gbMessages > div > div:nth-child(2) {
+    color: var(--gb-text-muted) !important;
+}
+
+/* Поля ввода (инлайн-стили из HTML) */
+#gbName, #gbMessage {
+    border: 2px inset var(--gb-input-border) !important;
+    background-color: var(--gb-input-bg) !important;
+    border-right-color: var(--gb-border-light) !important;
+    border-bottom-color: var(--gb-border-light) !important;
+    border-left-color: var(--gb-border-light) !important;
+    border-top-color: var(--gb-border-light) !important;
+    color: var(--gb-text) !important;
+}
+
+/* ===== МОДАЛЬНЫЕ ОКНА ===== */
 .captcha-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
+    background-color: var(--modal-overlay);
     z-index: 10000;
     display: none;
     justify-content: center;
     align-items: center;
 }
 .captcha-modal {
-    background-color: #c0c0c0;
-    border: 2px solid #ffffff;
-    border-right-color: #404040;
-    border-bottom-color: #404040;
+    background-color: var(--modal-bg);
+    border: 2px solid var(--modal-border-light);
+    border-right-color: var(--modal-border-dark);
+    border-bottom-color: var(--modal-border-dark);
     padding: 20px;
     width: 300px;
-    box-shadow: 2px 2px 0px #00000080;
+    box-shadow: 2px 2px 0px var(--win-shadow);
     font-family: 'W95Font', 'MS Sans Serif', sans-serif;
 }
-.captcha-modal h3 { margin-top: 0; text-align: center; color: #000080; }
-.captcha-question { font-size: 18px; text-align: center; margin: 15px 0; }
-.captcha-input { width: 100%; padding: 4px; border: 2px inset #ffffff; background: #fff; font-family: inherit; box-sizing: border-box; }
-.captcha-input.error { background-color: #ffcccc; }
-.captcha-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
-.captcha-buttons button { min-width: 80px; }
-.shake-modal { animation: shake 0.3s ease-in-out; }
+.captcha-modal h3 {
+    margin-top: 0;
+    text-align: center;
+    color: var(--title-start);
+}
+.captcha-question {
+    font-size: 18px;
+    text-align: center;
+    margin: 15px 0;
+}
+.captcha-input {
+    width: 100%;
+    padding: 4px;
+    border: 2px inset var(--modal-input-border);
+    background: var(--modal-input-bg);
+    font-family: inherit;
+    box-sizing: border-box;
+}
+.captcha-input.error {
+    background-color: var(--modal-error-bg);
+}
+.captcha-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+.captcha-buttons button {
+    min-width: 80px;
+}
+.shake-modal {
+    animation: shake 0.3s ease-in-out;
+}
 
 .image-modal-overlay {
     position: fixed;
@@ -507,21 +755,21 @@ body.modal-open {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: var(--modal-overlay-dark);
     z-index: 20000;
     display: none;
     justify-content: center;
     align-items: center;
 }
 .image-modal {
-    background-color: #c0c0c0;
-    border: 2px solid #ffffff;
-    border-right-color: #404040;
-    border-bottom-color: #404040;
+    background-color: var(--modal-bg);
+    border: 2px solid var(--modal-border-light);
+    border-right-color: var(--modal-border-dark);
+    border-bottom-color: var(--modal-border-dark);
     padding: 10px;
     max-width: 90vw;
     max-height: 90vh;
-    box-shadow: 2px 2px 0px #00000080;
+    box-shadow: 2px 2px 0px var(--win-shadow);
     display: flex;
     flex-direction: column;
 }
@@ -529,23 +777,34 @@ body.modal-open {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: linear-gradient(90deg, #000080, #1084d0);
-    color: white;
+    background: linear-gradient(90deg, var(--modal-header-start), var(--modal-header-end));
+    color: var(--modal-header-text);
     padding: 5px 5px 5px 10px;
     font-weight: bold;
     margin-bottom: 10px;
 }
-.image-modal-header .title { font-size: 14px; }
+.image-modal-header .title {
+    font-size: 14px;
+}
 .image-modal-header .close {
-    width: 24px; height: 24px;
-    background: #c0c0c0;
-    border: 2px solid #ffffff;
-    border-right-color: #808080;
-    border-bottom-color: #808080;
-    color: black; text-align: center; line-height: 20px; cursor: default; font-size: 18px;
+    width: 24px;
+    height: 24px;
+    background: var(--modal-close-bg);
+    border: 2px solid var(--modal-close-border-light);
+    border-right-color: var(--modal-close-border-dark);
+    border-bottom-color: var(--modal-close-border-dark);
+    color: var(--win-black);
+    text-align: center;
+    line-height: 20px;
+    cursor: default;
+    font-size: 18px;
     font-family: 'W95Font', 'MS Sans Serif', sans-serif;
 }
-.image-modal-header .close:active { border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; }
+.image-modal-header .close:active {
+    border: 2px solid var(--modal-close-border-dark);
+    border-right-color: var(--modal-close-border-light);
+    border-bottom-color: var(--modal-close-border-light);
+}
 .image-modal-content {
     overflow: auto;
     text-align: center;
@@ -554,14 +813,13 @@ body.modal-open {
 .image-modal-content img {
     max-width: 100%;
     max-height: 70vh;
-    border: 2px solid #808080;
-    border-top-color: #ffffff;
-    border-left-color: #ffffff;
+    border: 2px solid var(--win-dark-gray);
+    border-top-color: var(--win-light);
+    border-left-color: var(--win-light);
     background: white;
 }
 
-#paintGallery img { cursor: pointer; }
-
+/* ===== CLIPPY ===== */
 .clippy-container {
     position: fixed;
     bottom: 20px;
@@ -582,14 +840,14 @@ body.modal-open {
     bottom: 100%;
     right: 0;
     margin-bottom: 8px;
-    background-color: #ffffe1;
-    border: 2px solid #000080;
+    background-color: var(--clippy-bubble-bg);
+    border: 2px solid var(--clippy-bubble-border);
     border-radius: 5px;
     padding: 8px 12px;
     font-family: 'W95Font', 'MS Sans Serif', sans-serif;
     font-size: 13px;
-    color: black;
-    box-shadow: 2px 2px 0px #00000080;
+    color: var(--win-black);
+    box-shadow: 2px 2px 0px var(--win-shadow);
     max-width: 200px;
     word-wrap: break-word;
     white-space: normal;
@@ -607,12 +865,13 @@ body.modal-open {
     height: 0;
     border-left: 10px solid transparent;
     border-right: 10px solid transparent;
-    border-top: 10px solid #ffffe1;
+    border-top: 10px solid var(--clippy-bubble-bg);
 }
 
+/* ===== СТАТУС-БАР ===== */
 .status-bar {
-    background: #c0c0c0;
-    border-top: 2px solid #ffffff;
+    background: var(--status-bg);
+    border-top: 2px solid var(--status-border);
     padding: 4px 8px;
     display: flex;
     gap: 12px;
@@ -620,14 +879,15 @@ body.modal-open {
     flex-shrink: 0;
 }
 .status-bar span {
-    border-right: 1px dotted #808080;
+    border-right: 1px dotted var(--status-dot);
     padding-right: 12px;
+    color: var(--title-text)
 }
 .status-bar span:last-child {
     border-right: none;
 }
 
-/* ===== Кнопка лайка с изображением ===== */
+/* ===== КНОПКА ЛАЙКА ===== */
 .like-button {
     background: none;
     border: none;
@@ -643,7 +903,6 @@ body.modal-open {
     image-rendering: pixelated;
     image-rendering: crisp-edges;
 }
-
 .like-button:hover:not(:disabled) {
     transform: scale(1.2);
 }
@@ -658,19 +917,24 @@ body.modal-open {
     background-image: url('materialsl/liked.png');
 }
 
-/* ===== Стили для популярного рисунка ===== */
+/* ===== ПОПУЛЯРНЫЙ РИСУНОК ===== */
+.painting{
+    background-color: var(--button-bg) !important;
+    border: 3px solid var(--button-border-light) !important;
+    border-right-color: var(--button-border-dark) !important;
+    border-bottom-color: var(--button-border-dark) !important;
+    color: var(--title-text);
+}
+
 .top-painting {
-    background-color: #ffe246 !important;
-    border: 3px solid gold !important;
-    border-right-color: #b8860b !important;
-    border-bottom-color: #b8860b !important;
+    background-color: var(--top-bg) !important;
+    border: 3px solid var(--top-border) !important;
+    border-right-color: var(--top-border-dark) !important;
+    border-bottom-color: var(--top-border-dark) !important;
+    color: var(--win-black);
     position: relative;
     z-index: 1;
     animation: softGlow 2s infinite alternate;
-}
-@keyframes softGlow {
-    from { box-shadow: 0 0 5px gold, 0 0 10px gold; }
-    to { box-shadow: 0 0 15px gold, 0 0 25px #ffd700; }
 }
 .top-painting::before {
     content: '';
@@ -688,10 +952,6 @@ body.modal-open {
     image-rendering: pixelated;
     pointer-events: none;
     filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3));
-}
-@keyframes whiteLine {
-    0% { background-position: -200% -200%; }
-    100% { background-position: 200% 200%; opacity: 1; }
 }
 .top-painting::after {
     content: '';
@@ -717,6 +977,7 @@ body.modal-open {
     border-radius: inherit;
 }
 
+/* ===== БЛЁСТКИ ===== */
 .sparkle {
     position: absolute;
     background-image: url('materialsl/star.png');
@@ -726,76 +987,58 @@ body.modal-open {
     pointer-events: none;
     z-index: 25;
 }
-@keyframes sparkleTwinkle {
-    0% { transform: scale(0) rotate(0deg); opacity: 0; }
-    20% { transform: scale(1.2) rotate(180deg); opacity: 1; }
-    40% { transform: scale(0.8) rotate(360deg); opacity: 0.8; }
-    60% { transform: scale(0.5) rotate(540deg); opacity: 0.4; }
-    80% { transform: scale(0.2) rotate(720deg); opacity: 0.1; }
-    100% { transform: scale(0) rotate(900deg); opacity: 0; }
-}
-
-/* Анимация для индикатора загрузки */
-@keyframes blinkDots {
-    0% { opacity: 0; }
-    50% { opacity: 1; }
-    100% { opacity: 0; }
-}
 .loading-dots {
     animation: blinkDots 1s infinite;
 }
 
-/* ===== Стили для слоёв ===== */
+/* ===== СЛОИ ===== */
+
+.layers-panel{
+    background-color: var(--layer-background-bg);
+    border: 2px solid var(--gb-border) !important;
+    border-right-color: var(--gb-border-light) !important;
+    border-bottom-color: var(--gb-border-light) !important;
+}
+
 .layer-item {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 4px;
     margin: 2px 0;
-    background: #d4d0c8;
-    border: 2px solid #808080;
-    border-top-color: #ffffff;
-    border-left-color: #ffffff;
+    background: var(--layer-bg);
+    border: 2px solid var(--layer-border);
+    border-top-color: var(--layer-border-light);
+    border-left-color: var(--layer-border-light);
     cursor: default;
 }
 .layer-item.active {
-    background: #000080;
-    color: white;
+    background: var(--layer-active-bg);
+    color: var(--layer-active-text);
 }
 .layer-item.active input,
 .layer-item.active span {
-    color: white;
+    color: var(--layer-active-text);
 }
 .layer-visibility {
     width: 20px;
     height: 20px;
-    background: #c0c0c0;
-    border: 2px solid #808080;
-    border-top-color: #ffffff;
-    border-left-color: #ffffff;
+    background: var(--layer-visibility-bg);
+    border: 2px solid var(--layer-visibility-border);
+    border-top-color: var(--layer-border-light);
+    border-left-color: var(--layer-border-light);
     text-align: center;
     line-height: 16px;
     cursor: pointer;
+    background-size: cover;
+    image-rendering: pixelated;
 }
-
 .layer-visibility.visible {
-    background-image: url('materialsl/eye-open.png'); /* путь к твоему файлу */
-    image-rendering: pixelated;
-    background-size: cover
+    background-image: url('materialsl/eye-open.png');
 }
-
 .layer-visibility.hidden {
-    background-image: url('materialsl/eye-closed.png'); /* если есть */
-    image-rendering: pixelated;
-    background-size: cover
-    /* или можно сделать прозрачным: background-image: none; */
+    background-image: url('materialsl/eye-closed.png');
 }
-
-.layer-visibility.visible::before,
-.layer-visibility.hidden::before {
-    content: none;
-}
-
 .layer-name {
     flex: 1;
     font-size: 12px;
@@ -813,64 +1056,69 @@ body.modal-open {
 .layer-move button {
     width: 22px;
     height: 22px;
-    background: #c0c0c0;
-    border: 2px solid #ffffff;
-    border-right-color: #808080;
-    border-bottom-color: #808080;
+    background: var(--layer-move-btn-bg);
+    border: 2px solid var(--layer-move-btn-border-light);
+    border-right-color: var(--layer-move-btn-border-dark);
+    border-bottom-color: var(--layer-move-btn-border-dark);
     font-size: 12px;
     line-height: 18px;
     cursor: default;
 }
 .layer-move button:active {
-    border: 2px solid #808080;
-    border-right-color: #ffffff;
-    border-bottom-color: #ffffff;
+    border: 2px solid var(--layer-move-btn-border-dark);
+    border-right-color: var(--layer-move-btn-border-light);
+    border-bottom-color: var(--layer-move-btn-border-light);
 }
 
-/* ===== Модальное окно для переименования слоя ===== */
+/* ===== МОДАЛЬНОЕ ОКНО ПЕРЕИМЕНОВАНИЯ СЛОЯ ===== */
 .rename-modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
+    background-color: var(--modal-overlay);
     z-index: 40000;
     display: none;
     justify-content: center;
     align-items: center;
 }
 .rename-modal {
-    background-color: #c0c0c0;
-    border: 2px solid #ffffff;
-    border-right-color: #404040;
-    border-bottom-color: #404040;
+    background-color: var(--modal-bg);
+    border: 2px solid var(--modal-border-light);
+    border-right-color: var(--modal-border-dark);
+    border-bottom-color: var(--modal-border-dark);
     padding: 0;
     width: 300px;
-    box-shadow: 2px 2px 0px #00000080;
+    box-shadow: 2px 2px 0px var(--win-shadow);
     font-family: 'W95Font', 'MS Sans Serif', sans-serif;
 }
 .rename-modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: linear-gradient(90deg, #000080, #1084d0);
-    color: white;
+    background: linear-gradient(90deg, var(--modal-header-start), var(--modal-header-end));
+    color: var(--modal-header-text);
     padding: 5px 5px 5px 10px;
     font-weight: bold;
 }
 .rename-modal-header .close {
-    width: 24px; height: 24px;
-    background: #c0c0c0;
-    border: 2px solid #ffffff;
-    border-right-color: #808080;
-    border-bottom-color: #808080;
-    color: black; text-align: center; line-height: 20px; cursor: default; font-size: 18px;
+    width: 24px;
+    height: 24px;
+    background: var(--modal-close-bg);
+    border: 2px solid var(--modal-close-border-light);
+    border-right-color: var(--modal-close-border-dark);
+    border-bottom-color: var(--modal-close-border-dark);
+    color: var(--win-black);
+    text-align: center;
+    line-height: 20px;
+    cursor: default;
+    font-size: 18px;
 }
 .rename-modal-header .close:active {
-    border: 2px solid #808080;
-    border-right-color: #ffffff;
-    border-bottom-color: #ffffff;
+    border: 2px solid var(--modal-close-border-dark);
+    border-right-color: var(--modal-close-border-light);
+    border-bottom-color: var(--modal-close-border-light);
 }
 .rename-modal-content {
     padding: 20px;
@@ -878,8 +1126,8 @@ body.modal-open {
 .rename-input {
     width: 100%;
     padding: 4px;
-    border: 2px inset #ffffff;
-    background: #fff;
+    border: 2px inset var(--modal-input-border);
+    background: var(--modal-input-bg);
     font-family: inherit;
     margin-bottom: 15px;
     box-sizing: border-box;
@@ -893,7 +1141,15 @@ body.modal-open {
     min-width: 80px;
 }
 
-/* ===== Адаптация ===== */
+/* ===== ЭФФЕКТ ОШИБКИ ===== */
+.error-effect {
+    animation: shake 0.3s ease-in-out;
+    box-shadow: 0 0 20px var(--error-shadow);
+}
+
+
+
+/* ===== АДАПТИВНОСТЬ ===== */
 @media (max-width: 800px) {
     .left-panel { width: 150px; }
     .paint-row { flex-wrap: wrap !important; }
