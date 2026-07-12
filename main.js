@@ -1,4 +1,4 @@
-// main.js — версия с поддержкой CSS-переменных для фона
+// main.js — полная защита с банами по IP
 (function() {
     // === Звуки ===
     const clickSoundUrl = 'sounds/click.mp3';
@@ -42,7 +42,7 @@
 
     document.addEventListener('click', playClickSound);
 
-    // === Настройки ===
+    // === Настройки (без изменений) ===
     const soundsCheckbox = document.getElementById('soundsCheckbox');
     const autosaveCheckbox = document.getElementById('autosaveCheckbox');
     const themeDark = document.getElementById('themeDark');
@@ -57,14 +57,10 @@
 
     let customWallpaperLoaded = false;
 
-    // Новая функция установки обоев через CSS-переменные
     function setWallpaper(type) {
-        // Останавливаем кастомный фон, если он был запущен
         if (window.CustomWallpaper && typeof window.CustomWallpaper.stop === 'function') {
             window.CustomWallpaper.stop();
         }
-
-        // Определяем цвета для каждого типа
         let color1, color2, color3;
         switch(type) {
             case 'dark':
@@ -88,25 +84,19 @@
                 color3 = '#6a6a6a';
                 break;
             case 'custom':
-                // Для кастомного режима запускаем отдельный скрипт
-                // Сбрасываем inline-стили, чтобы не мешать CSS-анимации
                 body.style.background = '';
                 if (window.CustomWallpaper) {
                     window.CustomWallpaper.start();
                 } else {
                     loadCustomWallpaperScript();
                 }
-                return; // для custom не меняем переменные
+                return;
             default:
                 return;
         }
-
-        // Устанавливаем CSS-переменные для градиента
         document.documentElement.style.setProperty('--bg-color1', color1);
         document.documentElement.style.setProperty('--bg-color2', color2);
         document.documentElement.style.setProperty('--bg-color3', color3);
-
-        // Сбрасываем inline-стиль body (на случай, если там что-то было)
         body.style.background = '';
     }
 
@@ -120,7 +110,6 @@
         };
         script.onerror = function() {
             console.error('Failed to load custom wallpaper');
-            // Если не загрузился, ставим тёмный фон через переменные
             setWallpaper('dark');
         };
         document.head.appendChild(script);
@@ -187,13 +176,88 @@
     const SUPABASE_ANON_KEY = 'sb_publishable_PB_s3zWbWYA-0-BtqH1M7g_7De-juWW';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // === Гостевая книга ===
+    // === Получение IP (общее) ===
+    async function getClientIP() {
+        try {
+            const response = await fetch('https://api.ipify.org?format=json');
+            const data = await response.json();
+            return data.ip;
+        } catch (e) {
+            console.warn('Не удалось получить IP, используем fallback');
+            return '0.0.0.0';
+        }
+    }
+
+    // === Проверка бана по IP ===
+    async function isIPBanned(ip) {
+        if (!ip || ip === '0.0.0.0') return false; // не баним fallback
+        const { data, error } = await supabaseClient
+            .from('banned_ips')
+            .select('id')
+            .eq('ip_address', ip)
+            .maybeSingle();
+
+        if (error) {
+            console.error('Ошибка проверки бана:', error);
+            return false; // если ошибка, считаем что не забанен (чтобы не блокировать всех)
+        }
+        return !!data;
+    }
+
+    // === Универсальная проверка лимитов (для guestbook и paintings) ===
+    async function checkSpamLimits(table, ip, messageOrImageHash, options = {}) {
+        const now = new Date();
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+        const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+
+        // Для гостевой книги используем поле 'date', для paintings — 'created_at'
+        const dateField = table === 'guestbook' ? 'date' : 'created_at';
+
+        // 1. Количество записей за последний час
+        const { count: hourCount, error: countError } = await supabaseClient
+            .from(table)
+            .select('*', { count: 'exact', head: true })
+            .eq('ip_address', ip)
+            .gte(dateField, oneHourAgo.toISOString());
+
+        if (countError) {
+            console.error(`Ошибка подсчёта записей в ${table}:`, countError);
+            return { allowed: false, reason: 'Ошибка проверки' };
+        }
+
+        const limit = table === 'guestbook' ? 5 : 5; // можно выставить разные лимиты
+        if (hourCount >= limit) {
+            return { allowed: false, reason: `Вы отправили слишком много ${table === 'guestbook' ? 'сообщений' : 'рисунков'} за последний час (${hourCount}/${limit}). Попробуйте позже.` };
+        }
+
+        // 2. Проверка дубликатов (только для гостевой книги — по тексту сообщения)
+        if (table === 'guestbook' && messageOrImageHash) {
+            const { count: duplicateCount, error: dupError } = await supabaseClient
+                .from(table)
+                .select('*', { count: 'exact', head: true })
+                .eq('ip_address', ip)
+                .eq('message', messageOrImageHash)
+                .gte(dateField, fiveMinutesAgo.toISOString());
+
+            if (dupError) {
+                console.error('Ошибка проверки дубликатов:', dupError);
+                return { allowed: false, reason: 'Ошибка проверки' };
+            }
+
+            if (duplicateCount > 0) {
+                return { allowed: false, reason: 'Вы уже отправляли такое сообщение недавно. Подождите 5 минут.' };
+            }
+        }
+
+        return { allowed: true };
+    }
+
+    // === ГОСТЕВАЯ КНИГА ===
     const gbName = document.getElementById('gbName');
     const gbMessage = document.getElementById('gbMessage');
     const gbSend = document.getElementById('gbSend');
     const gbMessages = document.getElementById('gbMessages');
     
-    // Пагинация гостевой книги
     let guestbookCurrentPage = 0;
     const guestbookPageSize = 5;
     let guestbookTotalMessages = 0;
@@ -202,7 +266,115 @@
     const guestbookNextBtn = document.getElementById('guestbookNextPageBtn');
     const guestbookPageIndicator = document.getElementById('guestbookPageIndicator');
 
+    // --- Улучшенная каптча (общая) ---
+    const captchaOverlay = document.getElementById('captchaOverlay');
+    const captchaModal = document.getElementById('captchaModal');
+    const captchaQuestion = document.getElementById('captchaQuestion');
+    const captchaAnswer = document.getElementById('captchaAnswer');
+    const captchaOk = document.getElementById('captchaOk');
+    const captchaCancel = document.getElementById('captchaCancel');
+
+    let captchaResult = 5;
+    let pendingAction = null;
+    let pendingData = null;
+
+    function generateCaptcha() {
+        const operators = ['+', '-', '*'];
+        const op = operators[Math.floor(Math.random() * operators.length)];
+        let num1, num2, result;
+
+        switch (op) {
+            case '+':
+                num1 = Math.floor(Math.random() * 10) + 1;
+                num2 = Math.floor(Math.random() * 10) + 1;
+                result = num1 + num2;
+                break;
+            case '-':
+                num1 = Math.floor(Math.random() * 20) + 1;
+                num2 = Math.floor(Math.random() * num1) + 1;
+                result = num1 - num2;
+                break;
+            case '*':
+                num1 = Math.floor(Math.random() * 10) + 1;
+                num2 = Math.floor(Math.random() * 10) + 1;
+                result = num1 * num2;
+                break;
+        }
+        captchaQuestion.textContent = `${num1} ${op} ${num2} = ?`;
+        captchaResult = result;
+        captchaAnswer.value = '';
+        captchaAnswer.classList.remove('error');
+    }
+
+    function openCaptcha(action, data) {
+        if (captchaOverlay.style.display === 'flex') return;
+        pendingAction = action;
+        pendingData = data;
+        generateCaptcha();
+        captchaOverlay.style.display = 'flex';
+        captchaAnswer.focus();
+        disableBodyScroll();
+    }
+
+    function closeCaptcha() {
+        captchaOverlay.style.display = 'none';
+        pendingAction = null;
+        pendingData = null;
+        captchaAnswer.classList.remove('error');
+        enableBodyScroll();
+    }
+
+    function shakeModal() {
+        captchaModal.classList.add('shake-modal');
+        setTimeout(() => {
+            captchaModal.classList.remove('shake-modal');
+        }, 300);
+    }
+
+    function triggerErrorEffect() {
+        playChordSound();
+        win95Window.classList.add('error-effect');
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        const overlayColor = getComputedStyle(document.documentElement).getPropertyValue('--error-overlay').trim();
+        overlay.style.backgroundColor = overlayColor || 'rgba(255, 0, 0, 0.3)';
+        overlay.style.zIndex = '1500';
+        overlay.style.pointerEvents = 'none';
+        document.body.appendChild(overlay);
+        setTimeout(() => {
+            win95Window.classList.remove('error-effect');
+            overlay.remove();
+        }, 300);
+    }
+
+    captchaOk.addEventListener('click', () => {
+        const answer = parseInt(captchaAnswer.value.trim(), 10);
+        if (isNaN(answer) || answer !== captchaResult) {
+            triggerErrorEffect();
+            shakeModal();
+            captchaAnswer.classList.add('error');
+            generateCaptcha();
+            return;
+        }
+        playChimesSound();
+        if (pendingAction) {
+            pendingAction(pendingData);
+        }
+        closeCaptcha();
+    });
+
+    captchaCancel.addEventListener('click', closeCaptcha);
+    captchaOverlay.addEventListener('click', (e) => {
+        if (e.target === captchaOverlay) closeCaptcha();
+    });
+
+    // --- Загрузка гостевой книги ---
     async function loadGuestbook(page = guestbookCurrentPage) {
+        gbMessages.innerHTML = '';
         const offset = page * guestbookPageSize;
         const { data, count, error } = await supabaseClient
             .from('guestbook')
@@ -268,103 +440,41 @@
         });
     }
 
-    // === Капча ===
-    const captchaOverlay = document.getElementById('captchaOverlay');
-    const captchaModal = document.getElementById('captchaModal');
-    const captchaQuestion = document.getElementById('captchaQuestion');
-    const captchaAnswer = document.getElementById('captchaAnswer');
-    const captchaOk = document.getElementById('captchaOk');
-    const captchaCancel = document.getElementById('captchaCancel');
+    // --- Отправка сообщения (гостевая книга) с проверкой бана ---
+    async function performSendGuestbook(data) {
+        const { name, message, ip } = data;
 
-    let captchaNum1 = 2;
-    let captchaNum2 = 3;
-    let captchaResult = 5;
-    let pendingAction = null;
-    let pendingData = null;
-
-    function generateCaptcha() {
-        captchaNum1 = Math.floor(Math.random() * 9) + 1;
-        captchaNum2 = Math.floor(Math.random() * 9) + 1;
-        captchaResult = captchaNum1 + captchaNum2;
-        captchaQuestion.textContent = `${captchaNum1} + ${captchaNum2} = ?`;
-        captchaAnswer.value = '';
-        captchaAnswer.classList.remove('error');
-    }
-
-    function openCaptcha(action, data) {
-        if (captchaOverlay.style.display === 'flex') return;
-        pendingAction = action;
-        pendingData = data;
-        generateCaptcha();
-        captchaOverlay.style.display = 'flex';
-        captchaAnswer.focus();
-        disableBodyScroll();
-    }
-
-    function closeCaptcha() {
-        captchaOverlay.style.display = 'none';
-        pendingAction = null;
-        pendingData = null;
-        captchaAnswer.classList.remove('error');
-        enableBodyScroll();
-    }
-
-    function shakeModal() {
-        captchaModal.classList.add('shake-modal');
-        setTimeout(() => {
-            captchaModal.classList.remove('shake-modal');
-        }, 300);
-    }
-
-    function triggerErrorEffect() {
-        playChordSound();
-        win95Window.classList.add('error-effect');
-        
-        // Красный оверлей под окном – используем CSS-переменную для цвета
-        const overlay = document.createElement('div');
-        overlay.style.position = 'fixed';
-        overlay.style.top = '0';
-        overlay.style.left = '0';
-        overlay.style.width = '100%';
-        overlay.style.height = '100%';
-        // Берём цвет из CSS-переменной, если она есть, иначе запасной
-        const overlayColor = getComputedStyle(document.documentElement).getPropertyValue('--error-overlay').trim();
-        overlay.style.backgroundColor = overlayColor || 'rgba(255, 0, 0, 0.3)';
-        overlay.style.zIndex = '1500';
-        overlay.style.pointerEvents = 'none';
-        document.body.appendChild(overlay);
-        
-        setTimeout(() => {
-            win95Window.classList.remove('error-effect');
-            overlay.remove();
-        }, 300);
-    }
-
-    captchaOk.addEventListener('click', () => {
-        const answer = parseInt(captchaAnswer.value.trim(), 10);
-        if (isNaN(answer) || answer !== captchaResult) {
+        // Сначала проверяем бан
+        const banned = await isIPBanned(ip);
+        if (banned) {
             triggerErrorEffect();
-            shakeModal();
-            captchaAnswer.classList.add('error');
-            generateCaptcha();
+            const errorDiv = document.createElement('div');
+            errorDiv.style.color = '#ff0000';
+            errorDiv.style.border = '2px solid #ff0000';
+            errorDiv.style.padding = '8px';
+            errorDiv.style.marginBottom = '10px';
+            errorDiv.textContent = 'Ваш IP-адрес заблокирован. Обратитесь к администратору.';
+            gbMessages.prepend(errorDiv);
             return;
         }
-        playChimesSound();
-        if (pendingAction) {
-            pendingAction(pendingData);
+
+        const spamCheck = await checkSpamLimits('guestbook', ip, message);
+        if (!spamCheck.allowed) {
+            triggerErrorEffect();
+            const errorDiv = document.createElement('div');
+            errorDiv.style.color = '#ff0000';
+            errorDiv.style.border = '2px solid #ff0000';
+            errorDiv.style.padding = '8px';
+            errorDiv.style.marginBottom = '10px';
+            errorDiv.textContent = spamCheck.reason;
+            gbMessages.prepend(errorDiv);
+            return;
         }
-        closeCaptcha();
-    });
 
-    captchaCancel.addEventListener('click', closeCaptcha);
-    captchaOverlay.addEventListener('click', (e) => {
-        if (e.target === captchaOverlay) closeCaptcha();
-    });
+        const { error } = await supabaseClient.from('guestbook').insert([
+            { name, message, ip_address: ip }
+        ]);
 
-    // === Отправка сообщения (гостевая книга) ===
-    async function performSendGuestbook(data) {
-        const { name, message } = data;
-        const { error } = await supabaseClient.from('guestbook').insert([{ name, message }]);
         if (error) {
             console.error('Error sending message:', error);
             triggerErrorEffect();
@@ -373,10 +483,11 @@
             gbMessage.value = '';
             guestbookCurrentPage = 0;
             await loadGuestbook(0);
+            playChimesSound();
         }
     }
 
-    gbSend.addEventListener('click', (e) => {
+    gbSend.addEventListener('click', async (e) => {
         e.preventDefault();
         const name = gbName.value.trim();
         const message = gbMessage.value.trim();
@@ -384,10 +495,41 @@
             triggerErrorEffect();
             return;
         }
-        openCaptcha(performSendGuestbook, { name, message });
+
+        const ip = await getClientIP();
+
+        // Быстрая проверка бана перед капчей
+        const banned = await isIPBanned(ip);
+        if (banned) {
+            triggerErrorEffect();
+            const errorDiv = document.createElement('div');
+            errorDiv.style.color = '#ff0000';
+            errorDiv.style.border = '2px solid #ff0000';
+            errorDiv.style.padding = '8px';
+            errorDiv.style.marginBottom = '10px';
+            errorDiv.textContent = 'Ваш IP-адрес заблокирован. Обратитесь к администратору.';
+            gbMessages.prepend(errorDiv);
+            return;
+        }
+
+        // Проверка лимитов без капчи
+        const spamCheck = await checkSpamLimits('guestbook', ip, message);
+        if (!spamCheck.allowed) {
+            triggerErrorEffect();
+            const errorDiv = document.createElement('div');
+            errorDiv.style.color = '#ff0000';
+            errorDiv.style.border = '2px solid #ff0000';
+            errorDiv.style.padding = '8px';
+            errorDiv.style.marginBottom = '10px';
+            errorDiv.textContent = spamCheck.reason;
+            gbMessages.prepend(errorDiv);
+            return;
+        }
+
+        openCaptcha(performSendGuestbook, { name, message, ip });
     });
 
-    // === Проекты ===
+    // === Проекты (без изменений) ===
     async function loadProjects() {
         const container = document.getElementById('projects-container');
         const fallbackProjects = [];
@@ -421,7 +563,7 @@
         }
     }
 
-    // === Друзья ===
+    // === Друзья (без изменений) ===
     async function loadFriends() {
         const container = document.getElementById('friends-container');
         const fallbackFriends = [];
@@ -449,7 +591,7 @@
     loadProjects();
     loadFriends();
 
-    // === Paint (слои) ===
+    // === PAINT (с защитой и баном) ===
     const mainCanvas = document.getElementById('mainCanvas');
     const overlayCanvas = document.getElementById('overlayCanvas');
     const ctx = mainCanvas.getContext('2d');
@@ -481,7 +623,6 @@
     let currentColor = '#000000';
     let brushSize = 2;
 
-    // Слои
     let layers = [];
     let currentLayerIndex = 0;
 
@@ -508,10 +649,8 @@
     }
 
     function compositeLayers() {
-        // Заливаем фон белым
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
-        
         layers.forEach(layer => {
             if (layer.visible) {
                 ctx.globalAlpha = layer.opacity;
@@ -559,7 +698,6 @@
         }
     });
 
-    // Палитра
     const colors = [
         { name: 'black', hex: '#000000' },
         { name: 'dark red', hex: '#800000' },
@@ -705,7 +843,6 @@
     currentColorIndicator.style.backgroundColor = currentColor;
     updateSlidersFromColor(currentColor);
 
-    // Предпросмотр
     let mouseOverCanvas = false;
     let lastKnownX = 0, lastKnownY = 0;
     let drawing = false;
@@ -847,10 +984,29 @@
         return true;
     }
 
-    async function performSavePainting(imageData) {
+    // --- Сохранение рисунка с защитой и баном ---
+    async function performSavePainting(data) {
+        const { imageData, ip } = data;
+
+        // Проверка бана
+        const banned = await isIPBanned(ip);
+        if (banned) {
+            triggerErrorEffect();
+            alert('Ваш IP-адрес заблокирован. Обратитесь к администратору.');
+            return;
+        }
+
+        const spamCheck = await checkSpamLimits('paintings', ip, null);
+        if (!spamCheck.allowed) {
+            triggerErrorEffect();
+            alert(spamCheck.reason);
+            return;
+        }
+
         const { error } = await supabaseClient
             .from('paintings')
-            .insert([{ image_data: imageData }]);
+            .insert([{ image_data: imageData, ip_address: ip }]);
+
         if (error) {
             console.error('Error saving painting:', error);
             triggerErrorEffect();
@@ -860,17 +1016,36 @@
         }
     }
 
-    saveBtn.addEventListener('click', (e) => {
+    saveBtn.addEventListener('click', async (e) => {
         e.preventDefault();
         if (isCanvasBlank()) {
             triggerErrorEffect();
             return;
         }
+
+        const ip = await getClientIP();
+
+        // Быстрая проверка бана
+        const banned = await isIPBanned(ip);
+        if (banned) {
+            triggerErrorEffect();
+            alert('Ваш IP-адрес заблокирован. Обратитесь к администратору.');
+            return;
+        }
+
+        // Проверка лимитов без капчи
+        const spamCheck = await checkSpamLimits('paintings', ip, null);
+        if (!spamCheck.allowed) {
+            triggerErrorEffect();
+            alert(spamCheck.reason);
+            return;
+        }
+
         const imageData = mainCanvas.toDataURL();
-        openCaptcha(performSavePainting, imageData);
+        openCaptcha(performSavePainting, { imageData, ip });
     });
 
-    // === UI слоёв ===
+    // === UI слоёв (без изменений) ===
     const renameModal = document.getElementById('renameLayerModal');
     const renameInput = document.getElementById('renameLayerInput');
     const renameOk = document.getElementById('renameLayerOk');
@@ -975,7 +1150,7 @@
                 moveDiv.appendChild(upBtn);
             }
             
-            if (index < layers.length - 1 && index > 0) { // запрещаем движение вниз для Background
+            if (index < layers.length - 1 && index > 0) {
                 const downBtn = document.createElement('button');
                 downBtn.textContent = '↓';
                 downBtn.addEventListener('click', (e) => {
@@ -1010,8 +1185,6 @@
         newCanvas.width = mainCanvas.width;
         newCanvas.height = mainCanvas.height;
         const newCtx = newCanvas.getContext('2d');
-        // Новый слой полностью прозрачный
-        
         layers.push({
             canvas: newCanvas,
             ctx: newCtx,
@@ -1064,7 +1237,7 @@
 
     initLayers();
 
-    // === Модальное окно для просмотра рисунков ===
+    // === Модальное окно для просмотра рисунков (без изменений) ===
     const imageModal = document.getElementById('imageModal');
     const modalImage = document.getElementById('modalImage');
     const closeImageModal = document.getElementById('closeImageModal');
@@ -1213,7 +1386,7 @@
         });
     }
 
-    // === Лайки ===
+    // === Лайки (без изменений) ===
     const VISITOR_KEY = 'visitor_id';
     function generateVisitorId() {
         if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -1508,7 +1681,7 @@
         })
         .subscribe();
 
-    // === Пагинация гостевой книги (обработчики) ===
+    // === Пагинация гостевой книги ===
     if (guestbookPrevBtn) {
         guestbookPrevBtn.addEventListener('click', () => {
             if (guestbookCurrentPage > 0) {
@@ -1541,4 +1714,35 @@
             }
         });
     }
+
+    // === Административные функции (для консоли / интерфейса) ===
+    window.banIP = async function(ip, reason = 'Banned by admin') {
+        if (!ip || ip === '0.0.0.0') {
+            console.error('Нельзя забанить fallback IP');
+            return;
+        }
+        const { error } = await supabaseClient
+            .from('banned_ips')
+            .insert([{ ip_address: ip, reason: reason }]);
+        if (error) {
+            console.error('Ошибка бана IP:', error);
+        } else {
+            console.log(`IP ${ip} забанен. Причина: ${reason}`);
+        }
+    };
+
+    window.unbanIP = async function(ip) {
+        const { error } = await supabaseClient
+            .from('banned_ips')
+            .delete()
+            .eq('ip_address', ip);
+        if (error) {
+            console.error('Ошибка разбана IP:', error);
+        } else {
+            console.log(`IP ${ip} разбанен.`);
+        }
+    };
+
+    //window.isIPBanned = isIPBanned; // для отладки
+    //console.log('Система бана IP активирована. Используйте banIP("x.x.x.x", "причина") и unbanIP("x.x.x.x") в консоли.');
 })();
