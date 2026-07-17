@@ -1,35 +1,27 @@
-// main.js — полная защита от спама, бана IP, и консольных манипуляций
+// main.js — полная защита с баном по fingerprint (с отладкой)
 (function() {
     'use strict';
 
-    // === ЗАЩИТА КОНСОЛИ: перехват попыток вызова опасных функций ===
+    // === ЗАЩИТА КОНСОЛИ ===
     const originalConsoleLog = console.log;
     const originalConsoleWarn = console.warn;
     const originalConsoleError = console.error;
 
     console.log = function(...args) {
-        // Если пытаются вызвать что-то, связанное с баном или супейбейсом — скрываем
         const str = args.join(' ');
-        if (str.includes('banIP') || str.includes('banned_ips') || str.includes('supabase')) {
-            // Ничего не выводим
+        if (str.includes('banIP') || str.includes('banned_ips') || str.includes('supabase') || str.includes('fingerprint')) {
             return;
         }
         originalConsoleLog.apply(console, args);
     };
 
-    // Также блокируем доступ к глобальным объектам через eval и Function
     Object.defineProperty(window, 'eval', {
-        get: function() {
-            throw new Error('eval() запрещён для безопасности');
-        },
+        get: function() { throw new Error('eval() запрещён для безопасности'); },
         set: function() {}
     });
 
-    // Если кто-то попытается получить доступ к нашим внутренним функциям через window
     Object.defineProperty(window, 'banIP', {
-        get: function() {
-            throw new Error('Функция бана недоступна из консоли');
-        },
+        get: function() { throw new Error('Функция бана недоступна из консоли'); },
         set: function() {}
     });
 
@@ -75,7 +67,7 @@
 
     document.addEventListener('click', playClickSound);
 
-    // === Настройки (темы, обои, автосохранение) ===
+    // === Настройки ===
     const soundsCheckbox = document.getElementById('soundsCheckbox');
     const autosaveCheckbox = document.getElementById('autosaveCheckbox');
     const themeDark = document.getElementById('themeDark');
@@ -203,7 +195,7 @@
     autosaveCheckbox.addEventListener('change', function(e) { if (e.target.checked) saveSettings(); });
     loadSettings();
 
-    // === Supabase клиент (скрыт внутри IIFE, не доступен из консоли) ===
+    // === Supabase клиент ===
     const SUPABASE_URL = 'https://zirkmegtqfkfvyatgbgf.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_PB_s3zWbWYA-0-BtqH1M7g_7De-juWW';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -219,7 +211,7 @@
         }
     }
 
-    // === Проверка бана (скрытая функция) ===
+    // === Проверка бана IP ===
     async function isIPBanned(ip) {
         if (ip === '0.0.0.0') return false;
         const { data, error } = await supabaseClient
@@ -229,13 +221,13 @@
             .maybeSingle();
 
         if (error) {
-            console.error('Ошибка проверки бана:', error);
+            console.error('Ошибка проверки бана IP:', error);
             return false;
         }
         return !!data;
     }
 
-    // === Функция бана (НЕ глобальная, только внутри IIFE) ===
+    // === Функция бана IP ===
     async function banIP(ip, reason = 'Забанен модератором') {
         if (!ip || ip === '0.0.0.0') {
             alert('Нельзя забанить этот IP');
@@ -260,9 +252,115 @@
         }
     }
 
-    // === Проверка спам-лимитов + бан ===
-    // === Проверка спам-лимитов + бан (исправленная) ===
-    async function checkSpamLimits(table, ip, messageOrImageHash) {
+    // ===== ГЕНЕРАЦИЯ FINGERPRINT (с кэшированием) =====
+    let cachedFingerprint = null;
+
+    async function getFingerprint() {
+        if (cachedFingerprint) return cachedFingerprint;
+
+        const components = [];
+
+        components.push(navigator.userAgent);
+        components.push(screen.width + 'x' + screen.height + 'x' + screen.colorDepth);
+        components.push(navigator.language);
+        components.push(navigator.platform);
+        components.push(new Date().getTimezoneOffset());
+
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = 200;
+            canvas.height = 50;
+            const ctx = canvas.getContext('2d');
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillStyle = '#f60';
+            ctx.fillRect(0, 0, 100, 50);
+            ctx.fillStyle = '#069';
+            ctx.fillText('Cwm fjordbank glyphs vext quiz, 😃', 2, 30);
+            ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+            ctx.fillText('Cwm fjordbank glyphs vext quiz, 😃', 4, 40);
+            components.push(canvas.toDataURL());
+        } catch (e) {
+            components.push('canvas_error');
+        }
+
+        try {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (gl) {
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                if (debugInfo) {
+                    components.push(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL));
+                }
+            }
+        } catch (e) {
+            components.push('webgl_error');
+        }
+
+        const str = components.join('|||');
+        let hash = 5381;
+        for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) + hash) + str.charCodeAt(i);
+            hash = hash & hash;
+        }
+        const fp = 'fp_' + Math.abs(hash).toString(16).padStart(8, '0');
+        cachedFingerprint = fp;
+        console.log('✅ Ваш fingerprint:', fp);
+        // Для отладки покажем в alert (можно убрать)
+        // alert('Ваш fingerprint: ' + fp);
+        return fp;
+    }
+
+    // === Проверка бана fingerprint (с логами) ===
+    async function isFingerprintBanned(fingerprint) {
+        if (!fingerprint) return false;
+        try {
+            console.log('🔍 Проверка бана fingerprint:', fingerprint);
+            const { data, error } = await supabaseClient
+                .from('banned_fingerprints')
+                .select('id')
+                .eq('fingerprint', fingerprint)
+                .maybeSingle();
+            if (error) {
+                console.error('Ошибка проверки бана fingerprint:', error);
+                return false;
+            }
+            const banned = !!data;
+            console.log('🔍 Результат:', banned);
+            return banned;
+        } catch (e) {
+            console.error('Исключение в isFingerprintBanned:', e);
+            return false;
+        }
+    }
+
+    // === Бан fingerprint ===
+    async function banFingerprint(fingerprint, reason = 'Забанен по отпечатку устройства') {
+        if (!fingerprint) return;
+        if (await isFingerprintBanned(fingerprint)) {
+            alert('Этот fingerprint уже в чёрном списке');
+            return;
+        }
+        const { error } = await supabaseClient
+            .from('banned_fingerprints')
+            .insert([{ fingerprint, reason }]);
+        if (error) {
+            console.error('Ошибка бана fingerprint:', error);
+            alert('Не удалось забанить fingerprint.');
+        } else {
+            alert('Fingerprint успешно забанен!');
+        }
+    }
+
+    // === Проверка спам-лимитов + бан (IP + fingerprint) ===
+    async function checkSpamLimits(table, ip, fingerprint, messageOrImageHash) {
+        console.log('🔍 checkSpamLimits: table=' + table + ', fingerprint=' + fingerprint);
+
+        // Проверка бана по fingerprint (приоритет)
+        if (fingerprint && (await isFingerprintBanned(fingerprint))) {
+            console.log('🚫 FINGERPRINT ЗАБАНЕН!');
+            return { allowed: false, reason: 'Ваше устройство забанено. Обратитесь к администратору.' };
+        }
+
         if (await isIPBanned(ip)) {
             return { allowed: false, reason: 'Ваш IP забанен. Обратитесь к администратору.' };
         }
@@ -271,10 +369,7 @@
         const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
         const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
 
-        // Правильное поле даты для каждой таблицы
         const dateField = (table === 'guestbook') ? 'date' : 'created_at';
-
-        console.log(`🔍 Проверка лимитов: таблица=${table}, IP=${ip}, поле даты=${dateField}`);
 
         const { count: hourCount, error: countError } = await supabaseClient
             .from(table)
@@ -283,7 +378,7 @@
             .gte(dateField, oneHourAgo.toISOString());
 
         if (countError) {
-            console.error(`❌ Ошибка подсчёта в ${table}:`, countError);
+            console.error(`Ошибка подсчёта в ${table}:`, countError);
             return { allowed: false, reason: 'Ошибка проверки: ' + countError.message };
         }
 
@@ -301,7 +396,7 @@
                 .gte(dateField, fiveMinutesAgo.toISOString());
 
             if (dupError) {
-                console.error('❌ Ошибка проверки дубликатов:', dupError);
+                console.error('Ошибка проверки дубликатов:', dupError);
                 return { allowed: false, reason: 'Ошибка проверки дубликатов: ' + dupError.message };
             }
 
@@ -428,7 +523,7 @@
         if (e.target === captchaOverlay) closeCaptcha();
     });
 
-    // === Загрузка сообщений гостевой книги (с кнопкой бана) ===
+    // === Загрузка сообщений ===
     async function loadGuestbook(page = guestbookCurrentPage) {
         gbMessages.innerHTML = '';
         const offset = page * guestbookPageSize;
@@ -481,10 +576,6 @@
                 <div style="font-size: 11px; color: #404040;">${date}</div>
                 <div style="margin-top: 5px; white-space: pre-wrap;">${escapeHtml(msg.message)}</div>
             `;
-
-            // Кнопка бана удалена – она больше не отображается
-            // (администратор банит через локальный admin.html)
-
             gbMessages.appendChild(msgDiv);
         });
     }
@@ -502,9 +593,10 @@
 
     // === Отправка сообщения ===
     async function performSendGuestbook(data) {
-        const { name, message, ip } = data;
+        const { name, message, ip, fingerprint } = data;
+        console.log('📤 performSendGuestbook, fingerprint:', fingerprint);
 
-        const spamCheck = await checkSpamLimits('guestbook', ip, message);
+        const spamCheck = await checkSpamLimits('guestbook', ip, fingerprint, message);
         if (!spamCheck.allowed) {
             triggerErrorEffect();
             const errorDiv = document.createElement('div');
@@ -512,13 +604,13 @@
             errorDiv.style.border = '2px solid #ff0000';
             errorDiv.style.padding = '8px';
             errorDiv.style.marginBottom = '10px';
-            errorDiv.textContent = spamCheck.reason;
+            errorDiv.textContent = spamCheck.reason + ' (ваш fingerprint: ' + fingerprint + ')';
             gbMessages.prepend(errorDiv);
             return;
         }
 
         const { error } = await supabaseClient.from('guestbook').insert([
-            { name, message, ip_address: ip }
+            { name, message, ip_address: ip, fingerprint: fingerprint }
         ]);
 
         if (error) {
@@ -542,8 +634,10 @@
         }
 
         const ip = await getClientIP();
+        const fingerprint = await getFingerprint();
+        console.log('🖊️ Отправка сообщения, fingerprint:', fingerprint);
 
-        const spamCheck = await checkSpamLimits('guestbook', ip, message);
+        const spamCheck = await checkSpamLimits('guestbook', ip, fingerprint, message);
         if (!spamCheck.allowed) {
             triggerErrorEffect();
             const errorDiv = document.createElement('div');
@@ -551,12 +645,12 @@
             errorDiv.style.border = '2px solid #ff0000';
             errorDiv.style.padding = '8px';
             errorDiv.style.marginBottom = '10px';
-            errorDiv.textContent = spamCheck.reason;
+            errorDiv.textContent = spamCheck.reason + ' (ваш fingerprint: ' + fingerprint + ')';
             gbMessages.prepend(errorDiv);
             return;
         }
 
-        openCaptcha(performSendGuestbook, { name, message, ip });
+        openCaptcha(performSendGuestbook, { name, message, ip, fingerprint });
     });
 
     // ============== ПРОЕКТЫ И ДРУЗЬЯ ==============
@@ -604,12 +698,7 @@
     loadProjects();
     loadFriends();
 
-    // ============== PAINT (с защитой) ==============
-    // Внимание: этот код полностью идентичен предыдущей версии, но с использованием обновлённых checkSpamLimits и banIP.
-    // В целях экономии места я привожу его в сокращённом виде, но все функции сохранены.
-    // Для полноты вы можете использовать свой существующий код Paint, просто заменив вызовы на checkSpamLimits.
-    // Ниже я даю полную реализацию Paint, включая слои, кисти, палитру и сохранение с защитой.
-
+    // ============== PAINT ==============
     const mainCanvas = document.getElementById('mainCanvas');
     const overlayCanvas = document.getElementById('overlayCanvas');
     const ctx = mainCanvas.getContext('2d');
@@ -928,16 +1017,17 @@
         return true;
     }
 
-    // === Сохранение рисунка с защитой ===
+    // === Сохранение рисунка ===
     async function performSavePainting(data) {
-        const { imageData, ip } = data;
-        const spamCheck = await checkSpamLimits('paintings', ip, null);
+        const { imageData, ip, fingerprint } = data;
+        console.log('📤 performSavePainting, fingerprint:', fingerprint);
+        const spamCheck = await checkSpamLimits('paintings', ip, fingerprint, null);
         if (!spamCheck.allowed) {
             triggerErrorEffect();
-            alert(spamCheck.reason);
+            alert(spamCheck.reason + ' (ваш fingerprint: ' + fingerprint + ')');
             return;
         }
-        const { error } = await supabaseClient.from('paintings').insert([{ image_data: imageData, ip_address: ip }]);
+        const { error } = await supabaseClient.from('paintings').insert([{ image_data: imageData, ip_address: ip, fingerprint: fingerprint }]);
         if (error) {
             triggerErrorEffect();
         } else {
@@ -953,14 +1043,18 @@
             return;
         }
         const ip = await getClientIP();
-        const spamCheck = await checkSpamLimits('paintings', ip, null);
+        const fingerprint = await getFingerprint();
+        console.log('🖌️ Сохранение рисунка, fingerprint:', fingerprint);
+
+        const spamCheck = await checkSpamLimits('paintings', ip, fingerprint, null);
         if (!spamCheck.allowed) {
             triggerErrorEffect();
-            alert(spamCheck.reason);
+            alert(spamCheck.reason + ' (ваш fingerprint: ' + fingerprint + ')');
             return;
         }
+
         const imageData = mainCanvas.toDataURL();
-        openCaptcha(performSavePainting, { imageData, ip });
+        openCaptcha(performSavePainting, { imageData, ip, fingerprint });
     });
 
     // === UI слоёв ===
@@ -1120,7 +1214,7 @@
 
     initLayers();
 
-    // ============== ГАЛЕРЕЯ РИСУНКОВ (лайки, просмотр) ==============
+    // ============== ГАЛЕРЕЯ РИСУНКОВ ==============
     const imageModal = document.getElementById('imageModal');
     const modalImage = document.getElementById('modalImage');
     const closeImageModal = document.getElementById('closeImageModal');
@@ -1496,5 +1590,6 @@
         });
     }
 
-    console.log('✅ Защита активирована. Функции бана и Supabase скрыты от консоли.');
+    console.log('✅ Защита активирована. Бан по fingerprint включён.');
+    console.log('🔍 Откройте консоль для просмотра отладочных логов.');
 })();
