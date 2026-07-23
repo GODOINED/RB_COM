@@ -54,7 +54,19 @@
                             <p><strong>Contact:</strong> Discord: RB_COM#8016</p>
                         </div>
                         <div class="about-photo">
-                            <img src="materialsl/avatar.jpg" alt="My photo">
+                            <div class="avatar-wrapper">
+                                <img src="materialsl/avatar.jpg" alt="My photo">
+                                <div class="birthday-hat" id="birthdayHat">
+                                    <svg viewBox="0 0 100 120" width="70" height="84">
+                                        <polygon points="50,5 10,100 90,100" fill="#ff4d4d" />
+                                        <rect x="20" y="65" width="60" height="10" fill="white" />
+                                        <rect x="15" y="80" width="70" height="8" fill="white" />
+                                        <rect x="25" y="50" width="50" height="6" fill="#ffcc00" />
+                                        <circle cx="50" cy="5" r="14" fill="#ffcc00" />
+                                        <circle cx="50" cy="5" r="7" fill="#ff9900" />
+                                    </svg>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -260,10 +272,18 @@
         <img src="materialsl/clippy/idle/frame1.png" class="clippy-character" id="clippyImage" alt="Clippy">
     </div>
 
+    <!-- Прогресс‑бар дня рождения (внизу страницы) -->
+    <div id="birthday-progress-container">
+        <div id="birthday-progress-text" class="birthday-info-text"></div>
+        <div class="birthday-progress-bar">
+            <div id="birthday-progress-bar" class="birthday-progress-fill">0%</div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="clippy.js"></script>
-    <!-- <script src="custom_wallpaper.js"></script> --> <!-- Отключено для совместимости -->
+    <!-- <script src="custom_wallpaper.js"></script> -->
     <script src="main.js"></script>
 </body>
 </html>

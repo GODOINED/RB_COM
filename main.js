@@ -305,8 +305,6 @@
         const fp = 'fp_' + Math.abs(hash).toString(16).padStart(8, '0');
         cachedFingerprint = fp;
         console.log('✅ Ваш fingerprint:', fp);
-        // Для отладки покажем в alert (можно убрать)
-        // alert('Ваш fingerprint: ' + fp);
         return fp;
     }
 
@@ -355,7 +353,6 @@
     async function checkSpamLimits(table, ip, fingerprint, messageOrImageHash) {
         console.log('🔍 checkSpamLimits: table=' + table + ', fingerprint=' + fingerprint);
 
-        // Проверка бана по fingerprint (приоритет)
         if (fingerprint && (await isFingerprintBanned(fingerprint))) {
             console.log('🚫 FINGERPRINT ЗАБАНЕН!');
             return { allowed: false, reason: 'Ваше устройство забанено. Обратитесь к администратору.' };
@@ -1550,6 +1547,183 @@
         document.body.classList.remove('modal-open');
     }
 
+    // ============== ДЕНЬ РОЖДЕНИЯ: ПРОГРЕСС-БАР И КОНФЕТТИ ==============
+
+    // Конфетти (падают сверху, 300 шт., без прозрачности, заканчиваются когда все упадут)
+    function startConfetti() {
+        const oldContainer = document.getElementById('confetti-container');
+        if (oldContainer) oldContainer.remove();
+
+        const container = document.createElement('div');
+        container.id = 'confetti-container';
+        container.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
+        document.body.appendChild(container);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        container.appendChild(canvas);
+        const ctx = canvas.getContext('2d');
+
+        const colors = [
+            '#f44336', '#e91e63', '#9c27b0', '#3f51b5', '#2196f3',
+            '#009688', '#4caf50', '#8bc34a', '#ffeb3b', '#ff9800',
+            '#ff5722', '#ff4081', '#7c4dff', '#00bcd4', '#ffd700'
+        ];
+
+        const shapes = ['circle', 'square', 'triangle', 'star', 'rect'];
+        const particles = [];
+        const count = 300;
+
+        for (let i = 0; i < count; i++) {
+            const size = Math.random() * 10 + 4;
+            const shape = shapes[Math.floor(Math.random() * shapes.length)];
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: -Math.random() * canvas.height - 50,
+                vx: (Math.random() - 0.5) * 0.8,
+                vy: Math.random() * 2.5 + 1.5,
+                w: shape === 'rect' ? size * (0.6 + Math.random() * 0.8) : size,
+                h: shape === 'rect' ? size * (0.4 + Math.random() * 0.6) : size,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                shape: shape,
+                rotation: Math.random() * 360,
+                rotSpeed: (Math.random() - 0.5) * 6,
+                gravity: 0.02 + Math.random() * 0.02,
+                sway: Math.random() * 0.02,
+                phase: Math.random() * 2 * Math.PI,
+                dead: false
+            });
+        }
+
+        function drawParticle(p) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rotation * Math.PI / 180);
+            ctx.fillStyle = p.color;
+
+            switch (p.shape) {
+                case 'circle':
+                    ctx.beginPath();
+                    ctx.arc(0, 0, p.w / 2, 0, 2 * Math.PI);
+                    ctx.fill();
+                    break;
+                case 'square':
+                    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                    break;
+                case 'triangle':
+                    ctx.beginPath();
+                    ctx.moveTo(0, -p.h / 2);
+                    ctx.lineTo(-p.w / 2, p.h / 2);
+                    ctx.lineTo(p.w / 2, p.h / 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    break;
+                case 'star':
+                    const spikes = 5;
+                    const outerRadius = p.w / 2;
+                    const innerRadius = outerRadius * 0.4;
+                    ctx.beginPath();
+                    for (let i = 0; i < spikes * 2; i++) {
+                        const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                        const angle = (i * Math.PI) / spikes - Math.PI / 2;
+                        const x = radius * Math.cos(angle);
+                        const y = radius * Math.sin(angle);
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    break;
+                case 'rect':
+                default:
+                    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                    break;
+            }
+            ctx.restore();
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            let anyAlive = false;
+
+            for (let p of particles) {
+                if (p.dead) continue;
+
+                p.vy += p.gravity;
+                p.vx += Math.sin(p.phase) * p.sway;
+                p.x += p.vx;
+                p.y += p.vy;
+                p.rotation += p.rotSpeed;
+                p.rotSpeed *= 0.995;
+
+                if (p.y > canvas.height + 50) {
+                    p.dead = true;
+                    continue;
+                }
+
+                if (p.x < -50) p.x = canvas.width + 50;
+                if (p.x > canvas.width + 50) p.x = -50;
+
+                anyAlive = true;
+                drawParticle(p);
+            }
+
+            if (anyAlive) {
+                requestAnimationFrame(animate);
+            } else {
+                container.remove();
+            }
+        }
+
+        animate();
+    }
+
+    // Обновление прогресса и управление колпачком
+    function updateBirthdayProgress() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const startDate = new Date(year, 5, 1);  // 1 июня
+        const endDate = new Date(year, 7, 24);   // 24 августа
+
+        const container = document.getElementById('birthday-progress-container');
+        const progressBar = document.getElementById('birthday-progress-bar');
+        const progressText = document.getElementById('birthday-progress-text');
+
+        // Колпачок именинника
+        const hat = document.getElementById('birthdayHat');
+        if (hat) {
+            if (now.getMonth() === 7 && now.getDate() === 24) {
+                hat.classList.add('show');
+            } else {
+                hat.classList.remove('show');
+            }
+        }
+
+        // Прогресс-бар
+        if (now >= startDate && now <= endDate) {
+            container.style.display = 'block';
+            const totalMs = endDate - startDate;
+            const elapsedMs = now - startDate;
+            const progress = Math.min(100, (elapsedMs / totalMs) * 100);
+            progressBar.style.width = progress + '%';
+            progressBar.textContent = Math.round(progress) + '%';
+            const daysLeft = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
+            progressText.textContent = `Time remaining until the birthday ${daysLeft} days`;
+
+            // Запуск конфетти в день рождения (один раз)
+            if (now.getMonth() === 7 && now.getDate() === 24) {
+                if (!window._birthdayCelebrated) {
+                    window._birthdayCelebrated = true;
+                    startConfetti();
+                }
+            }
+        } else {
+            container.style.display = 'none';
+            window._birthdayCelebrated = false;
+        }
+    }
+
     // ============== ИНИЦИАЛИЗАЦИЯ ==============
     loadGuestbook(0);
     (async () => {
@@ -1589,6 +1763,9 @@
             if (currentPage < totalPages - 1) { currentPage++; await loadPaintings(); }
         });
     }
+
+    // Запуск обновления прогресса при загрузке
+    updateBirthdayProgress();
 
     console.log('✅ Защита активирована. Бан по fingerprint включён.');
     console.log('🔍 Откройте консоль для просмотра отладочных логов.');

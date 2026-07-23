@@ -91,12 +91,11 @@
     --bg-color3: #3a3a3a;
 
     /* Дополнительные переменные для анимированных градиентов интерфейса */
-    /* Раскомментируй и настрой, чтобы включить анимацию для окна и заголовка */
     --win-bg-gradient: linear-gradient(45deg, #492045,#81397b);
     --win-bg-animation: win98Gradient 5s linear infinite;
     --title-gradient: linear-gradient(90deg, #660080, #6b3a77, #660080);
     --title-animation: win98Gradient 15s linear infinite;
-    --gradient-size: 200% 200%; /* Раскомментировано, чтобы градиент был заметен */
+    --gradient-size: 200% 200%;
 }
 
 /* ===== ШРИФТЫ ===== */
@@ -149,6 +148,10 @@
     50% { opacity: 1; }
     100% { opacity: 0; }
 }
+@keyframes hatSwing {
+    0%, 100% { transform: translateX(-50%) rotate(0deg); }
+    50% { transform: translateX(-50%) rotate(6deg); }
+}
 
 /* ===== ОСНОВНЫЕ СТИЛИ ===== */
 * {
@@ -177,7 +180,6 @@ body {
     padding: 10px;
 }
 
-/* Блокировка прокрутки при открытых модальных окнах */
 body.modal-open {
     overflow: hidden;
     padding-right: 18px;
@@ -185,7 +187,6 @@ body.modal-open {
 
 /* ===== ГЛАВНОЕ ОКНО ===== */
 .win95-window {
-    /* По умолчанию сплошной цвет. Если задан --win-bg-gradient, используем его и анимацию */
     background: var(--win-bg-gradient, var(--win-gray));
     background-size: var(--gradient-size, auto);
     animation: var(--win-bg-animation, none);
@@ -204,9 +205,7 @@ body.modal-open {
     z-index: 2000;
 }
 
-/* Заголовок окна */
 .window-title {
-    /* По умолчанию статичный градиент. Если задан --title-gradient, используем его и анимацию */
     background: var(--title-gradient, linear-gradient(90deg, var(--title-start), var(--title-end)));
     background-size: var(--gradient-size, auto);
     animation: var(--title-animation, none);
@@ -253,7 +252,6 @@ body.modal-open {
     border-bottom-color: var(--win-light);
 }
 
-/* Меню */
 .menu-bar {
     display: flex;
     background: var(--win-gray);
@@ -272,7 +270,6 @@ body.modal-open {
     color: var(--highlight-text);
 }
 
-/* Панель инструментов */
 .toolbar {
     display: flex;
     background: var(--win-gray);
@@ -309,7 +306,7 @@ body.modal-open {
 /* ===== КОНТЕНТ ===== */
 .window-content {
     display: flex;
-    background: transparent; /*Убираем фон*/
+    background: transparent;
     padding: 8px;
     gap: 8px;
     flex: 1;
@@ -339,18 +336,14 @@ body.modal-open {
     cursor: default;
     font-size: 12px;
     border-bottom: 1px dotted var(--win-dark-gray);
-    
-    
 }
 .folder-list li:last-child {
     border-bottom: none;
-    
 }
 .folder-list li a {
     color: var(--link-color);
     text-decoration: none;
     display: block;
-    
 }
 .folder-list li.selected {
     background: var(--highlight-bg);
@@ -494,6 +487,25 @@ body.modal-open {
     background: var(--win-gray);
     max-width: 100%;
     height: auto;
+}
+
+/* Обёртка для аватарки и колпачка */
+.avatar-wrapper {
+    position: relative;
+    display: inline-block;
+}
+.birthday-hat {
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    z-index: 10;
+    pointer-events: none;
+    /* анимация удалена — колпачок неподвижен */
+}
+.birthday-hat.show {
+    display: block;
 }
 
 .friends-content {
@@ -655,17 +667,13 @@ input[type=range]:focus {
     color: var(--title-text);
 }
 
-/* ===== ГОСТЕВАЯ КНИГА (полная кастомизация через !important) ===== */
+/* ===== ГОСТЕВАЯ КНИГА ===== */
 .guestbook-messages {
     margin-top: 20px;
-    
 }
-
 .guestbook-form{
     color: var(--link-color)
 }
-
-/* Переопределяем инлайн-стили сообщений */
 #gbMessages > div {
     border: 2px solid var(--gb-border) !important;
     border-right-color: var(--gb-border-light) !important;
@@ -675,13 +683,9 @@ input[type=range]:focus {
     padding: 8px !important;
     margin-bottom: 10px !important;
 }
-
-/* Дата в сообщении */
 #gbMessages > div > div:nth-child(2) {
     color: var(--gb-text-muted) !important;
 }
-
-/* Поля ввода (инлайн-стили из HTML) */
 #gbName, #gbMessage {
     border: 2px inset var(--gb-input-border) !important;
     background-color: var(--gb-input-bg) !important;
@@ -925,7 +929,6 @@ input[type=range]:focus {
     border-bottom-color: var(--button-border-dark) !important;
     color: var(--title-text);
 }
-
 .top-painting {
     background-color: var(--top-bg) !important;
     border: 3px solid var(--top-border) !important;
@@ -992,14 +995,12 @@ input[type=range]:focus {
 }
 
 /* ===== СЛОИ ===== */
-
 .layers-panel{
     background-color: var(--layer-background-bg);
     border: 2px solid var(--gb-border) !important;
     border-right-color: var(--gb-border-light) !important;
     border-bottom-color: var(--gb-border-light) !important;
 }
-
 .layer-item {
     display: flex;
     align-items: center;
@@ -1147,7 +1148,57 @@ input[type=range]:focus {
     box-shadow: 0 0 20px var(--error-shadow);
 }
 
-
+/* ===== ПРОГРЕСС-БАР ДНЯ РОЖДЕНИЯ (НИЖНИЙ) ===== */
+#birthday-progress-container {
+    position: fixed;
+    bottom: 10px;
+    left: 0;
+    width: 100%;
+    padding: 0 20px;
+    z-index: 9998;
+    display: none;
+    text-align: center;
+    box-sizing: border-box;
+    pointer-events: none;
+}
+#birthday-progress-container .birthday-info-text {
+    color: #ffffff;
+    font-size: 14px;
+    margin-bottom: 4px;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+    pointer-events: none;
+}
+#birthday-progress-container .birthday-progress-bar {
+    max-width: 600px;
+    margin: 0 auto;
+    background-color: #d4d0c8;
+    border: 2px solid #808080;
+    border-right-color: #ffffff;
+    border-bottom-color: #ffffff;
+    height: 22px;
+    position: relative;
+    pointer-events: none;
+    animation: swingBar 2s ease-in-out infinite;
+    transform-origin: center center;
+}
+#birthday-progress-container .birthday-progress-fill {
+    background: linear-gradient(90deg, #ff4081, #ff9800);
+    height: 100%;
+    width: 0%;
+    transition: width 0.5s ease;
+    text-align: center;
+    line-height: 22px;
+    font-size: 12px;
+    color: #000000;
+    font-weight: bold;
+    white-space: nowrap;
+}
+@keyframes swingBar {
+    0% { transform: rotate(0deg); }
+    25% { transform: rotate(1.5deg); }
+    75% { transform: rotate(-1.5deg); }
+    100% { transform: rotate(0deg); }
+}
 
 /* ===== АДАПТИВНОСТЬ ===== */
 @media (max-width: 800px) {
