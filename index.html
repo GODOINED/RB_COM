@@ -34,10 +34,10 @@
 
         <!-- Панель авторизации -->
         <div style="display: flex; gap: 8px; align-items: center; padding: 4px 8px; background: var(--win-gray); border-bottom: 2px solid var(--win-light);">
-            <span id="userStatus" style="font-weight: bold; color: var(--title-text);">👤 Гость</span>
-            <button id="loginBtn" class="project-button" style="padding: 2px 10px;">Войти</button>
-            <button id="registerBtn" class="project-button" style="padding: 2px 10px;">Регистрация</button>
-            <button id="logoutBtn" class="project-button" style="padding: 2px 10px; display: none;">Выйти</button>
+            <span id="userStatus" style="font-weight: bold; color: var(--title-text);">👤 Guest</span>
+            <button id="loginBtn" class="project-button" style="padding: 2px 10px;">Log in</button>
+            <button id="registerBtn" class="project-button" style="padding: 2px 10px;">Sing up</button>
+            <button id="logoutBtn" class="project-button" style="padding: 2px 10px; display: none;">Log out</button>
         </div>
 
         <div class="window-content">
@@ -276,12 +276,12 @@
     <!-- Модалка входа -->
     <div class="captcha-overlay" id="loginModal" style="display: none;">
         <div class="captcha-modal">
-            <h3>Вход</h3>
+            <h3>Log in</h3>
             <input type="email" id="loginEmail" placeholder="Email" class="captcha-input" style="margin-bottom:10px;">
-            <input type="password" id="loginPassword" placeholder="Пароль" class="captcha-input" style="margin-bottom:10px;">
+            <input type="password" id="loginPassword" placeholder="Password" class="captcha-input" style="margin-bottom:10px;">
             <div class="captcha-buttons">
-                <button id="loginSubmit" class="project-button">Войти</button>
-                <button id="closeLogin" class="project-button">Отмена</button>
+                <button id="loginSubmit" class="project-button">Log in</button>
+                <button id="closeLogin" class="project-button">Cancel</button>
             </div>
         </div>
     </div>
@@ -289,12 +289,12 @@
     <!-- Модалка регистрации -->
     <div class="captcha-overlay" id="registerModal" style="display: none;">
         <div class="captcha-modal">
-            <h3>Регистрация</h3>
+            <h3>Sing up</h3>
             <input type="email" id="registerEmail" placeholder="Email" class="captcha-input" style="margin-bottom:10px;">
-            <input type="password" id="registerPassword" placeholder="Пароль (мин. 6 символов)" class="captcha-input" style="margin-bottom:10px;">
+            <input type="password" id="registerPassword" placeholder="Password (min. 6 characters)" class="captcha-input" style="margin-bottom:10px;">
             <div class="captcha-buttons">
-                <button id="registerSubmit" class="project-button">Зарегистрироваться</button>
-                <button id="closeRegister" class="project-button">Отмена</button>
+                <button id="registerSubmit" class="project-button">Sing up</button>
+                <button id="closeRegister" class="project-button">Cancel</button>
             </div>
         </div>
     </div>

@@ -308,9 +308,9 @@
     loginSubmit.addEventListener('click', async () => {
         const email = loginEmail.value.trim();
         const password = loginPassword.value.trim();
-        if (!email || !password) { showError('Аккаунт', 'Введите email и пароль'); return; }
+        if (!email || !password) { showError('Account', 'Enter email and password'); return; }
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (error) { showError('Аккаунт', 'Ошибка входа: ' + error.message); return; }
+        if (error) { showError('Account', 'Login error: ' + error.message); return; }
         loginModal.style.display = 'none';
         await checkAuth();
         location.reload();
@@ -319,10 +319,10 @@
     registerSubmit.addEventListener('click', async () => {
         const email = registerEmail.value.trim();
         const password = registerPassword.value.trim();
-        if (!email || password.length < 6) { showError('Аккаунт', 'Email и пароль (мин. 6 символов)'); return; }
+        if (!email || password.length < 6) { showError('Account', 'Email and password (min. 6 characters)'); return; }
         const { error } = await supabaseClient.auth.signUp({ email, password });
-        if (error) { showError('Аккаунт', 'Ошибка регистрации: ' + error.message); return; }
-        showError('Аккаунт', 'Регистрация успешна! Войдите.');
+        if (error) { showError('Account', 'Sign in error:' + error.message); return; }
+        showError('Account', 'Sign in successful! Log in.');
         registerModal.style.display = 'none';
         loginModal.style.display = 'flex';
     });
@@ -567,7 +567,7 @@
 
     uploadAvatarBtn.addEventListener('click', () => {
         if (!currentUser) {
-            showError('Аккаунт', 'Сначала войдите в аккаунт');
+            showError('Account', 'First, log in to your account.');
             return;
         }
         avatarInput.click();
@@ -656,7 +656,7 @@
 
     removeAvatarBtn.addEventListener('click', async () => {
         if (!currentUser) {
-            showError('Аккаунт', 'Сначала войдите в аккаунт');
+            showError('Account', 'First, log in to your account.');
             return;
         }
         if (!confirm('Удалить аватарку?')) return;
@@ -741,26 +741,26 @@
     async function banFingerprint(fingerprint, reason = 'Забанен по отпечатку') {
         if (!fingerprint) return;
         if (await isFingerprintBanned(fingerprint)) {
-            showError('Система', 'Этот fingerprint уже в чёрном списке');
+            showError('System', 'This fingerprint is already blacklisted.');
             return;
         }
         const { error } = await supabaseClient
             .from('banned_fingerprints')
             .insert([{ fingerprint, reason }]);
         if (error) {
-            showError('Система', 'Ошибка бана fingerprint');
+            showError('System', 'Fingerprint ban error');
         } else {
-            showError('Система', 'Fingerprint забанен!');
+            showError('System', 'Fingerprint has been banned!');
         }
     }
 
     // === Проверка спам-лимитов + бан ===
     async function checkSpamLimits(table, user, ip, fingerprint, messageOrImageHash) {
         if (fingerprint && (await isFingerprintBanned(fingerprint))) {
-            return { allowed: false, reason: 'Ваше устройство забанено.' };
+            return { allowed: false, reason: 'Your device has been banned.' };
         }
         if (await isIPBanned(ip)) {
-            return { allowed: false, reason: 'Ваш IP забанен.' };
+            return { allowed: false, reason: 'Your IP has been banned.' };
         }
 
         const now = new Date();
@@ -1480,7 +1480,7 @@
         const spamCheck = await checkSpamLimits('paintings', user, ip, fingerprint, null);
         if (!spamCheck.allowed) {
             triggerErrorEffect();
-            showError('Система', spamCheck.reason);
+            showError('System', spamCheck.reason);
             return;
         }
 
@@ -1495,7 +1495,7 @@
             if (error) {
                 console.error('Ошибка сохранения рисунка:', error);
                 triggerErrorEffect();
-                showError('Painter','Ошибка сохранения: ' + error.message);
+                showError('Painter','Save error: ' + error.message);
                 return;
             }
             playChimesSound();
@@ -1515,7 +1515,7 @@
         const spamCheck = await checkSpamLimits('paintings', currentUser, ip, fingerprint, null);
         if (!spamCheck.allowed) {
             triggerErrorEffect();
-            showError('Система', spamCheck.reason);
+            showError('System', spamCheck.reason);
             return;
         }
 
