@@ -1,4 +1,4 @@
-// main.js — полная защита с баном по fingerprint (с отладкой)
+// main.js — полная версия (динамическая загрузка FingerprintJS, аватарки, аккаунты)
 (function() {
     'use strict';
 
@@ -9,19 +9,19 @@
 
     console.log = function(...args) {
         const str = args.join(' ');
-        if (str.includes('banIP') || str.includes('banned_ips') || str.includes('supabase') || str.includes('fingerprint')) {
+        if (str.includes('banIP') || str.includes('banned_ips') || str.includes('supabase') || str.includes('fingerprint') || str.includes('auth') || str.includes('avatar')) {
             return;
         }
         originalConsoleLog.apply(console, args);
     };
 
     Object.defineProperty(window, 'eval', {
-        get: function() { throw new Error('eval() запрещён для безопасности'); },
+        get: function() { throw new Error('eval() запрещён'); },
         set: function() {}
     });
 
     Object.defineProperty(window, 'banIP', {
-        get: function() { throw new Error('Функция бана недоступна из консоли'); },
+        get: function() { throw new Error('Функция бана недоступна'); },
         set: function() {}
     });
 
@@ -30,11 +30,69 @@
     const chimesSoundUrl = 'sounds/chimes.mp3';
     const chordSoundUrl = 'sounds/chord.mp3';
 
-    let clickSound = null;
-    let chimesSound = null;
-    let chordSound = null;
+    let clickSound = null, chimesSound = null, chordSound = null;
     let soundsEnabled = true;
 
+    // ===== СТИЛИЗОВАННОЕ ОКНО ОШИБКИ =====
+    function showError(title, message) {
+        // Создаём overlay, если его нет
+        let overlay = document.getElementById('errorModalOverlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'errorModalOverlay';
+            overlay.className = 'error-modal-overlay';
+            overlay.innerHTML = `
+                <div class="error-modal">
+                    <div class="error-modal-header">
+                        <span class="title"><span class="icon">⚠️</span> <span id="errorModalTitle">Ошибка</span></span>
+                        <button class="close-btn" id="errorModalCloseBtn">×</button>
+                    </div>
+                    <div class="error-modal-body">
+                        <div class="message" id="errorModalMessage">Произошла ошибка.</div>
+                        <div class="buttons">
+                            <button id="errorModalOkBtn">OK</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            // Закрытие по кнопке
+            document.getElementById('errorModalCloseBtn').addEventListener('click', closeErrorModal);
+            document.getElementById('errorModalOkBtn').addEventListener('click', closeErrorModal);
+            overlay.addEventListener('click', function(e) {
+                if (e.target === this) closeErrorModal();
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && overlay.style.display === 'flex') {
+                    closeErrorModal();
+                }
+            });
+        }
+
+        document.getElementById('errorModalTitle').textContent = title || 'Ошибка';
+        document.getElementById('errorModalMessage').textContent = message || 'Произошла неизвестная ошибка.';
+        overlay.style.display = 'flex';
+        // Эффект дрожания (как в каптче)
+        const modal = overlay.querySelector('.error-modal');
+        modal.classList.add('shake-modal');
+        setTimeout(() => modal.classList.remove('shake-modal'), 300);
+        // Звук ошибки (если есть функция playChordSound, можно вызвать)
+        if (typeof playChordSound === 'function') playChordSound();
+        // Эффект красной вспышки (если есть функция triggerErrorEffect, можно вызвать)
+        if (typeof triggerErrorEffect === 'function') triggerErrorEffect();
+        // Отключаем прокрутку
+        document.body.classList.add('modal-open');
+    }
+
+    function closeErrorModal() {
+        const overlay = document.getElementById('errorModalOverlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+            document.body.classList.remove('modal-open');
+        }
+    }
+    
     function playClickSound() {
         if (!soundsEnabled) return;
         if (!clickSound) {
@@ -200,6 +258,448 @@
     const SUPABASE_ANON_KEY = 'sb_publishable_PB_s3zWbWYA-0-BtqH1M7g_7De-juWW';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // === ТЕКУЩИЙ ПОЛЬЗОВАТЕЛЬ ===
+    let currentUser = null;
+    let isLoggedIn = false;
+
+    async function checkAuth() {
+        const { data: { user }, error } = await supabaseClient.auth.getUser();
+        if (!error && user) {
+            currentUser = user;
+            isLoggedIn = true;
+            const statusEl = document.getElementById('userStatus');
+            if (statusEl) statusEl.textContent = '👤 ' + user.email;
+            document.getElementById('loginBtn').style.display = 'none';
+            document.getElementById('registerBtn').style.display = 'none';
+            document.getElementById('logoutBtn').style.display = 'inline-block';
+            loadUserAvatar(user.id);
+        } else {
+            currentUser = null;
+            isLoggedIn = false;
+            document.getElementById('userStatus').textContent = '👤 Гость';
+            document.getElementById('loginBtn').style.display = 'inline-block';
+            document.getElementById('registerBtn').style.display = 'inline-block';
+            document.getElementById('logoutBtn').style.display = 'none';
+        }
+    }
+
+    // === АУТЕНТИФИКАЦИЯ (UI) ===
+    const loginModal = document.getElementById('loginModal');
+    const registerModal = document.getElementById('registerModal');
+    const loginBtn = document.getElementById('loginBtn');
+    const registerBtn = document.getElementById('registerBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const closeLogin = document.getElementById('closeLogin');
+    const closeRegister = document.getElementById('closeRegister');
+    const loginSubmit = document.getElementById('loginSubmit');
+    const registerSubmit = document.getElementById('registerSubmit');
+    const loginEmail = document.getElementById('loginEmail');
+    const loginPassword = document.getElementById('loginPassword');
+    const registerEmail = document.getElementById('registerEmail');
+    const registerPassword = document.getElementById('registerPassword');
+
+    loginBtn.addEventListener('click', () => { loginModal.style.display = 'flex'; });
+    registerBtn.addEventListener('click', () => { registerModal.style.display = 'flex'; });
+    closeLogin.addEventListener('click', () => { loginModal.style.display = 'none'; });
+    closeRegister.addEventListener('click', () => { registerModal.style.display = 'none'; });
+    loginModal.addEventListener('click', (e) => { if (e.target === loginModal) loginModal.style.display = 'none'; });
+    registerModal.addEventListener('click', (e) => { if (e.target === registerModal) registerModal.style.display = 'none'; });
+
+    loginSubmit.addEventListener('click', async () => {
+        const email = loginEmail.value.trim();
+        const password = loginPassword.value.trim();
+        if (!email || !password) { showError('Аккаунт', 'Введите email и пароль'); return; }
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) { showError('Аккаунт', 'Ошибка входа: ' + error.message); return; }
+        loginModal.style.display = 'none';
+        await checkAuth();
+        location.reload();
+    });
+
+    registerSubmit.addEventListener('click', async () => {
+        const email = registerEmail.value.trim();
+        const password = registerPassword.value.trim();
+        if (!email || password.length < 6) { showError('Аккаунт', 'Email и пароль (мин. 6 символов)'); return; }
+        const { error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) { showError('Аккаунт', 'Ошибка регистрации: ' + error.message); return; }
+        showError('Аккаунт', 'Регистрация успешна! Войдите.');
+        registerModal.style.display = 'none';
+        loginModal.style.display = 'flex';
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+        await supabaseClient.auth.signOut();
+        await checkAuth();
+        location.reload();
+    });
+
+    // ===================== FINGERPRINT (динамическая загрузка с нескольких CDN) =====================
+    let cachedFingerprint = null;
+
+    const FP_CDN_SOURCES = [
+        'https://openfpcdn.io/fingerprintjs/v4/iife.min.js',
+        'https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js',
+        'https://unpkg.com/@fingerprintjs/fingerprintjs@3/dist/fp.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/fingerprintjs2/2.1.0/fingerprint2.min.js'
+    ];
+
+    function loadScript(src) {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.async = true;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+
+    async function loadFingerprintJS() {
+        if (typeof FingerprintJS !== 'undefined' || typeof Fingerprint2 !== 'undefined') {
+            return true;
+        }
+        for (const src of FP_CDN_SOURCES) {
+            try {
+                console.log(`⏳ Пробуем загрузить FingerprintJS с ${src}...`);
+                await loadScript(src);
+                if (typeof FingerprintJS !== 'undefined' || typeof Fingerprint2 !== 'undefined') {
+                    console.log(`✅ FingerprintJS загружен с ${src}`);
+                    return true;
+                }
+            } catch (e) {
+                console.warn(`⚠️ Не удалось загрузить с ${src}:`, e);
+            }
+        }
+        console.warn('❌ Не удалось загрузить FingerprintJS ни с одного источника.');
+        return false;
+    }
+
+    function generateFallbackFingerprint() {
+        const stored = localStorage.getItem('device_fp');
+        if (stored) {
+            console.log('ℹ️ Используем сохранённый fallback fingerprint:', stored);
+            return stored;
+        }
+        const components = [];
+        components.push(navigator.userAgent);
+        components.push(screen.width + 'x' + screen.height + 'x' + screen.colorDepth);
+        components.push(navigator.language);
+        components.push(navigator.platform);
+        components.push(new Date().getTimezoneOffset());
+
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = 200; canvas.height = 50;
+            const ctx = canvas.getContext('2d');
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillStyle = '#f60';
+            ctx.fillRect(0,0,100,50);
+            ctx.fillStyle = '#069';
+            ctx.fillText('Cwm fjordbank glyphs vext quiz, 😃', 2, 30);
+            ctx.fillStyle = 'rgba(102,204,0,0.7)';
+            ctx.fillText('Cwm fjordbank glyphs vext quiz, 😃', 4, 40);
+            components.push(canvas.toDataURL());
+        } catch(e) { components.push('canvas_error'); }
+
+        try {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (gl) {
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                if (debugInfo) components.push(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL));
+            }
+        } catch(e) { components.push('webgl_error'); }
+
+        const str = components.join('|||');
+        let hash = 5381;
+        for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) + hash) + str.charCodeAt(i);
+            hash = hash & hash;
+        }
+        const fp = 'fp_' + Math.abs(hash).toString(16).padStart(8, '0');
+        localStorage.setItem('device_fp', fp);
+        console.log('⚠️ Сгенерирован fallback fingerprint:', fp);
+        return fp;
+    }
+
+    async function getFingerprint() {
+        if (cachedFingerprint) return cachedFingerprint;
+
+        const loaded = await loadFingerprintJS();
+
+        if (loaded) {
+            try {
+                let visitorId;
+                if (typeof FingerprintJS !== 'undefined') {
+                    const fpPromise = FingerprintJS.load();
+                    const fp = await fpPromise;
+                    const result = await fp.get();
+                    visitorId = result.visitorId;
+                } else if (typeof Fingerprint2 !== 'undefined') {
+                    visitorId = await new Promise((resolve) => {
+                        Fingerprint2.get((components) => {
+                            const values = components.map(c => c.value);
+                            const murmur = Fingerprint2.x64hash128(values.join(''), 31);
+                            resolve(murmur);
+                        });
+                    });
+                }
+                if (visitorId) {
+                    cachedFingerprint = visitorId;
+                    console.log('✅ Fingerprint (успешно):', visitorId);
+                    return visitorId;
+                }
+            } catch (error) {
+                console.error('❌ Ошибка получения fingerprint:', error);
+            }
+        }
+
+        const fallback = generateFallbackFingerprint();
+        cachedFingerprint = fallback;
+        return fallback;
+    }
+
+    // ===================== АВАТАРКИ =====================
+
+    const avatarInput = document.getElementById('avatarInput');
+    const uploadAvatarBtn = document.getElementById('uploadAvatarBtn');
+    const removeAvatarBtn = document.getElementById('removeAvatarBtn');
+    const avatarPreview = document.getElementById('avatarPreview');
+    const avatarStatus = document.getElementById('avatarStatus');
+
+    const avatarCache = new Map();
+
+    async function fetchUserAvatar(userId) {
+        if (!userId) {
+            console.warn('fetchUserAvatar: userId не передан');
+            return null;
+        }
+        if (avatarCache.has(userId)) {
+            console.log(`fetchUserAvatar: кеш для ${userId} ->`, avatarCache.get(userId));
+            return avatarCache.get(userId);
+        }
+        try {
+            console.log(`fetchUserAvatar: запрос профиля для ${userId}`);
+            let { data, error } = await supabaseClient
+                .from('profiles')
+                .select('avatar_url')
+                .eq('id', userId)
+                .maybeSingle();
+
+            if (error && error.code === 'PGRST116') {
+                console.log(`fetchUserAvatar: профиль для ${userId} не найден, создаём...`);
+                const { error: insertError } = await supabaseClient
+                    .from('profiles')
+                    .insert([{ id: userId, avatar_url: null }]);
+                if (insertError) {
+                    console.error('fetchUserAvatar: ошибка создания профиля:', insertError);
+                    avatarCache.set(userId, null);
+                    return null;
+                }
+                const { data: newData, error: newError } = await supabaseClient
+                    .from('profiles')
+                    .select('avatar_url')
+                    .eq('id', userId)
+                    .maybeSingle();
+                if (newError) throw newError;
+                data = newData;
+                console.log(`fetchUserAvatar: профиль создан, avatar_url =`, data?.avatar_url);
+            } else if (error) {
+                throw error;
+            }
+
+            const url = data?.avatar_url || null;
+            avatarCache.set(userId, url);
+            console.log(`fetchUserAvatar: для ${userId} получен URL:`, url);
+            return url;
+        } catch (e) {
+            console.error('fetchUserAvatar: исключение:', e.message);
+            avatarCache.set(userId, null);
+            return null;
+        }
+    }
+
+    async function loadUserAvatar(userId) {
+        if (!userId) return;
+        try {
+            const url = await fetchUserAvatar(userId);
+            if (url) {
+                avatarPreview.innerHTML = `<img src="${url}?t=${Date.now()}" style="width: 100%; height: 100%; object-fit: cover;">`;
+            } else {
+                avatarPreview.innerHTML = '👤';
+            }
+        } catch (e) {
+            avatarPreview.innerHTML = '👤';
+        }
+    }
+
+    function resizeImage(file, maxWidth, maxHeight, quality = 0.85) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > maxWidth || height > maxHeight) {
+                        const ratio = Math.min(maxWidth / width, maxHeight / height);
+                        width = Math.round(width * ratio);
+                        height = Math.round(height * ratio);
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.drawImage(img, 0, 0, width, height);
+                    canvas.toBlob((blob) => {
+                        resolve(blob);
+                    }, 'image/png', quality);
+                };
+                img.onerror = function() { resolve(null); };
+                img.src = e.target.result;
+            };
+            reader.onerror = function() { resolve(null); };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    uploadAvatarBtn.addEventListener('click', () => {
+        if (!currentUser) {
+            showError('Аккаунт', 'Сначала войдите в аккаунт');
+            return;
+        }
+        avatarInput.click();
+    });
+
+    avatarInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (file.size > 1024 * 1024) {
+            avatarStatus.textContent = '❌ Файл превышает 1 МБ';
+            avatarStatus.style.color = 'red';
+            avatarInput.value = '';
+            return;
+        }
+
+        avatarStatus.textContent = '⏳ Обработка...';
+        avatarStatus.style.color = '#666';
+
+        try {
+            const resizedBlob = await resizeImage(file, 128, 128, 0.85);
+            if (!resizedBlob) {
+                avatarStatus.textContent = '❌ Ошибка обработки изображения';
+                avatarStatus.style.color = 'red';
+                avatarInput.value = '';
+                return;
+            }
+
+            if (resizedBlob.size > 1024 * 1024) {
+                avatarStatus.textContent = '❌ После сжатия файл всё ещё больше 1 МБ';
+                avatarStatus.style.color = 'red';
+                avatarInput.value = '';
+                return;
+            }
+
+            const fileName = `${currentUser.id}/${Date.now()}.png`;
+            const { error: uploadError } = await supabaseClient.storage
+                .from('avatars')
+                .upload(fileName, resizedBlob, {
+                    contentType: 'image/png',
+                    upsert: true
+                });
+
+            if (uploadError) {
+                console.error('Ошибка загрузки в Storage:', uploadError);
+                avatarStatus.textContent = '❌ Ошибка загрузки: ' + uploadError.message;
+                avatarStatus.style.color = 'red';
+                avatarInput.value = '';
+                return;
+            }
+
+            const { data: urlData } = supabaseClient.storage
+                .from('avatars')
+                .getPublicUrl(fileName);
+
+            const avatarUrl = urlData.publicUrl;
+
+            const { error: updateError } = await supabaseClient
+                .from('profiles')
+                .upsert({ id: currentUser.id, avatar_url: avatarUrl, updated_at: new Date().toISOString() });
+
+            if (updateError) {
+                console.error('Ошибка обновления профиля:', updateError);
+                avatarStatus.textContent = '❌ Ошибка сохранения: ' + updateError.message;
+                avatarStatus.style.color = 'red';
+                avatarInput.value = '';
+                return;
+            }
+
+            avatarCache.set(currentUser.id, avatarUrl);
+            avatarPreview.innerHTML = `<img src="${avatarUrl}?t=${Date.now()}" style="width: 100%; height: 100%; object-fit: cover;">`;
+            avatarStatus.textContent = '✅ Аватарка обновлена!';
+            avatarStatus.style.color = 'green';
+            avatarInput.value = '';
+
+            await loadGuestbook(guestbookCurrentPage);
+            await loadPaintings();
+
+        } catch (err) {
+            console.error('Ошибка:', err);
+            avatarStatus.textContent = '❌ Ошибка: ' + err.message;
+            avatarStatus.style.color = 'red';
+            avatarInput.value = '';
+        }
+    });
+
+    removeAvatarBtn.addEventListener('click', async () => {
+        if (!currentUser) {
+            showError('Аккаунт', 'Сначала войдите в аккаунт');
+            return;
+        }
+        if (!confirm('Удалить аватарку?')) return;
+
+        try {
+            const { data, error } = await supabaseClient
+                .from('profiles')
+                .select('avatar_url')
+                .eq('id', currentUser.id)
+                .maybeSingle();
+            if (error) throw error;
+
+            if (data && data.avatar_url) {
+                const path = data.avatar_url.split('/').pop();
+                if (path) {
+                    await supabaseClient.storage
+                        .from('avatars')
+                        .remove([`${currentUser.id}/${path}`]);
+                }
+            }
+
+            const { error: updateError } = await supabaseClient
+                .from('profiles')
+                .update({ avatar_url: null, updated_at: new Date().toISOString() })
+                .eq('id', currentUser.id);
+
+            if (updateError) throw updateError;
+
+            avatarCache.delete(currentUser.id);
+            avatarPreview.innerHTML = '👤';
+            avatarStatus.textContent = '✅ Аватарка удалена';
+            avatarStatus.style.color = 'green';
+
+            await loadGuestbook(guestbookCurrentPage);
+            await loadPaintings();
+
+        } catch (err) {
+            console.error('Ошибка удаления:', err);
+            avatarStatus.textContent = '❌ Ошибка: ' + err.message;
+            avatarStatus.style.color = 'red';
+        }
+    });
+
     // === Получение IP ===
     async function getClientIP() {
         try {
@@ -219,186 +719,88 @@
             .select('id')
             .eq('ip_address', ip)
             .maybeSingle();
-
-        if (error) {
-            console.error('Ошибка проверки бана IP:', error);
-            return false;
-        }
+        if (error) return false;
         return !!data;
     }
 
-    // === Функция бана IP ===
-    async function banIP(ip, reason = 'Забанен модератором') {
-        if (!ip || ip === '0.0.0.0') {
-            alert('Нельзя забанить этот IP');
-            return;
-        }
-
-        if (await isIPBanned(ip)) {
-            alert('Этот IP уже в чёрном списке');
-            return;
-        }
-
-        const { error } = await supabaseClient
-            .from('banned_ips')
-            .insert([{ ip_address: ip, reason: reason }]);
-
-        if (error) {
-            console.error('Ошибка бана IP:', error);
-            alert('Не удалось забанить IP.');
-        } else {
-            alert(`IP ${ip} успешно забанен!`);
-            loadGuestbook(guestbookCurrentPage);
-        }
-    }
-
-    // ===== ГЕНЕРАЦИЯ FINGERPRINT (с кэшированием) =====
-    let cachedFingerprint = null;
-
-    async function getFingerprint() {
-        if (cachedFingerprint) return cachedFingerprint;
-
-        const components = [];
-
-        components.push(navigator.userAgent);
-        components.push(screen.width + 'x' + screen.height + 'x' + screen.colorDepth);
-        components.push(navigator.language);
-        components.push(navigator.platform);
-        components.push(new Date().getTimezoneOffset());
-
-        try {
-            const canvas = document.createElement('canvas');
-            canvas.width = 200;
-            canvas.height = 50;
-            const ctx = canvas.getContext('2d');
-            ctx.textBaseline = 'alphabetic';
-            ctx.fillStyle = '#f60';
-            ctx.fillRect(0, 0, 100, 50);
-            ctx.fillStyle = '#069';
-            ctx.fillText('Cwm fjordbank glyphs vext quiz, 😃', 2, 30);
-            ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
-            ctx.fillText('Cwm fjordbank glyphs vext quiz, 😃', 4, 40);
-            components.push(canvas.toDataURL());
-        } catch (e) {
-            components.push('canvas_error');
-        }
-
-        try {
-            const canvas = document.createElement('canvas');
-            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-            if (gl) {
-                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                if (debugInfo) {
-                    components.push(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL));
-                }
-            }
-        } catch (e) {
-            components.push('webgl_error');
-        }
-
-        const str = components.join('|||');
-        let hash = 5381;
-        for (let i = 0; i < str.length; i++) {
-            hash = ((hash << 5) + hash) + str.charCodeAt(i);
-            hash = hash & hash;
-        }
-        const fp = 'fp_' + Math.abs(hash).toString(16).padStart(8, '0');
-        cachedFingerprint = fp;
-        console.log('✅ Ваш fingerprint:', fp);
-        return fp;
-    }
-
-    // === Проверка бана fingerprint (с логами) ===
+    // === Проверка бана fingerprint ===
     async function isFingerprintBanned(fingerprint) {
         if (!fingerprint) return false;
         try {
-            console.log('🔍 Проверка бана fingerprint:', fingerprint);
             const { data, error } = await supabaseClient
                 .from('banned_fingerprints')
                 .select('id')
                 .eq('fingerprint', fingerprint)
                 .maybeSingle();
-            if (error) {
-                console.error('Ошибка проверки бана fingerprint:', error);
-                return false;
-            }
-            const banned = !!data;
-            console.log('🔍 Результат:', banned);
-            return banned;
-        } catch (e) {
-            console.error('Исключение в isFingerprintBanned:', e);
-            return false;
-        }
+            if (error) return false;
+            return !!data;
+        } catch(e) { return false; }
     }
 
     // === Бан fingerprint ===
-    async function banFingerprint(fingerprint, reason = 'Забанен по отпечатку устройства') {
+    async function banFingerprint(fingerprint, reason = 'Забанен по отпечатку') {
         if (!fingerprint) return;
         if (await isFingerprintBanned(fingerprint)) {
-            alert('Этот fingerprint уже в чёрном списке');
+            showError('Система', 'Этот fingerprint уже в чёрном списке');
             return;
         }
         const { error } = await supabaseClient
             .from('banned_fingerprints')
             .insert([{ fingerprint, reason }]);
         if (error) {
-            console.error('Ошибка бана fingerprint:', error);
-            alert('Не удалось забанить fingerprint.');
+            showError('Система', 'Ошибка бана fingerprint');
         } else {
-            alert('Fingerprint успешно забанен!');
+            showError('Система', 'Fingerprint забанен!');
         }
     }
 
-    // === Проверка спам-лимитов + бан (IP + fingerprint) ===
-    async function checkSpamLimits(table, ip, fingerprint, messageOrImageHash) {
-        console.log('🔍 checkSpamLimits: table=' + table + ', fingerprint=' + fingerprint);
-
+    // === Проверка спам-лимитов + бан ===
+    async function checkSpamLimits(table, user, ip, fingerprint, messageOrImageHash) {
         if (fingerprint && (await isFingerprintBanned(fingerprint))) {
-            console.log('🚫 FINGERPRINT ЗАБАНЕН!');
-            return { allowed: false, reason: 'Ваше устройство забанено. Обратитесь к администратору.' };
+            return { allowed: false, reason: 'Ваше устройство забанено.' };
         }
-
         if (await isIPBanned(ip)) {
-            return { allowed: false, reason: 'Ваш IP забанен. Обратитесь к администратору.' };
+            return { allowed: false, reason: 'Ваш IP забанен.' };
         }
 
         const now = new Date();
-        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-        const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+        const isLoggedIn = user && user.id;
+        const idField = isLoggedIn ? 'user_id' : 'ip_address';
+        const idValue = isLoggedIn ? user.id : ip;
+
+        const limit = isLoggedIn ? 5 : 1;
+        const timeWindow = isLoggedIn ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+        const startTime = new Date(now.getTime() - timeWindow);
 
         const dateField = (table === 'guestbook') ? 'date' : 'created_at';
 
-        const { count: hourCount, error: countError } = await supabaseClient
+        const { count, error } = await supabaseClient
             .from(table)
             .select('*', { count: 'exact', head: true })
-            .eq('ip_address', ip)
-            .gte(dateField, oneHourAgo.toISOString());
+            .eq(idField, idValue)
+            .gte(dateField, startTime.toISOString());
 
-        if (countError) {
-            console.error(`Ошибка подсчёта в ${table}:`, countError);
-            return { allowed: false, reason: 'Ошибка проверки: ' + countError.message };
+        if (error) {
+            console.error('Ошибка подсчёта лимитов:', error);
+            return { allowed: false, reason: 'Ошибка проверки лимитов' };
         }
 
-        const limit = 5;
-        if (hourCount >= limit) {
-            return { allowed: false, reason: `Вы отправили слишком много ${table === 'guestbook' ? 'сообщений' : 'рисунков'} за час (${hourCount}/${limit}).` };
+        if (count >= limit) {
+            const noun = table === 'guestbook' ? 'сообщений' : 'рисунков';
+            const period = isLoggedIn ? 'час' : 'день';
+            return { allowed: false, reason: `Вы исчерпали лимит (${count}/${limit}) ${noun} за ${period}.` };
         }
 
-        if (table === 'guestbook' && messageOrImageHash) {
-            const { count: duplicateCount, error: dupError } = await supabaseClient
+        if (table === 'guestbook' && messageOrImageHash && !isLoggedIn) {
+            const fiveMinutesAgo = new Date(now.getTime() - 5*60*1000);
+            const { count: dupCount, error: dupError } = await supabaseClient
                 .from(table)
                 .select('*', { count: 'exact', head: true })
                 .eq('ip_address', ip)
                 .eq('message', messageOrImageHash)
                 .gte(dateField, fiveMinutesAgo.toISOString());
-
-            if (dupError) {
-                console.error('Ошибка проверки дубликатов:', dupError);
-                return { allowed: false, reason: 'Ошибка проверки дубликатов: ' + dupError.message };
-            }
-
-            if (duplicateCount > 0) {
-                return { allowed: false, reason: 'Вы уже отправляли такое сообщение недавно. Подождите 5 минут.' };
+            if (!dupError && dupCount > 0) {
+                return { allowed: false, reason: 'Вы уже отправляли такое сообщение недавно.' };
             }
         }
 
@@ -435,23 +837,10 @@
         const operators = ['+', '-', '*'];
         const op = operators[Math.floor(Math.random() * operators.length)];
         let num1, num2, result;
-
         switch (op) {
-            case '+':
-                num1 = Math.floor(Math.random() * 10) + 1;
-                num2 = Math.floor(Math.random() * 10) + 1;
-                result = num1 + num2;
-                break;
-            case '-':
-                num1 = Math.floor(Math.random() * 20) + 1;
-                num2 = Math.floor(Math.random() * num1) + 1;
-                result = num1 - num2;
-                break;
-            case '*':
-                num1 = Math.floor(Math.random() * 10) + 1;
-                num2 = Math.floor(Math.random() * 10) + 1;
-                result = num1 * num2;
-                break;
+            case '+': num1 = Math.floor(Math.random()*10)+1; num2 = Math.floor(Math.random()*10)+1; result = num1+num2; break;
+            case '-': num1 = Math.floor(Math.random()*20)+1; num2 = Math.floor(Math.random()*num1)+1; result = num1-num2; break;
+            case '*': num1 = Math.floor(Math.random()*10)+1; num2 = Math.floor(Math.random()*10)+1; result = num1*num2; break;
         }
         captchaQuestion.textContent = `${num1} ${op} ${num2} = ?`;
         captchaResult = result;
@@ -524,22 +913,28 @@
     async function loadGuestbook(page = guestbookCurrentPage) {
         gbMessages.innerHTML = '';
         const offset = page * guestbookPageSize;
-        const { data, count, error } = await supabaseClient
-            .from('guestbook')
-            .select('*', { count: 'exact' })
-            .order('date', { ascending: false })
-            .range(offset, offset + guestbookPageSize - 1);
+        try {
+            const { data, count, error } = await supabaseClient
+                .from('guestbook')
+                .select('*', { count: 'exact' })
+                .order('date', { ascending: false })
+                .range(offset, offset + guestbookPageSize - 1);
 
-        if (error) {
-            gbMessages.innerHTML = '<p style="color: red;">Failed to load messages.</p>';
-            return;
+            if (error) {
+                console.error('Ошибка загрузки guestbook:', error);
+                gbMessages.innerHTML = '<p style="color: red;">Failed to load messages: ' + error.message + '</p>';
+                return;
+            }
+
+            guestbookTotalMessages = count || 0;
+            guestbookTotalPages = Math.ceil(guestbookTotalMessages / guestbookPageSize);
+            guestbookCurrentPage = page;
+            updateGuestbookPagination();
+            await renderMessages(data || []);
+        } catch (e) {
+            console.error('Исключение в loadGuestbook:', e);
+            gbMessages.innerHTML = '<p style="color: red;">Ошибка загрузки сообщений</p>';
         }
-
-        guestbookTotalMessages = count || 0;
-        guestbookTotalPages = Math.ceil(guestbookTotalMessages / guestbookPageSize);
-        guestbookCurrentPage = page;
-        updateGuestbookPagination();
-        renderMessages(data || []);
     }
 
     function updateGuestbookPagination() {
@@ -550,12 +945,31 @@
         }
     }
 
-    function renderMessages(messages) {
+    // === Отрисовка сообщений с аватарками ===
+    async function renderMessages(messages) {
         gbMessages.innerHTML = '';
         if (!messages || messages.length === 0) {
             gbMessages.innerHTML = '<p style="color: #808080;">No messages yet. Be the first!</p>';
             return;
         }
+
+        console.log(`📝 Рендерим ${messages.length} сообщений`);
+
+        const avatarPromises = messages.map(async (msg) => {
+            if (msg.user_id) {
+                console.log(`renderMessages: загружаем аватарку для user_id=${msg.user_id}, сообщение ID=${msg.id}`);
+                const url = await fetchUserAvatar(msg.user_id);
+                return { msgId: msg.id, avatarUrl: url };
+            } else {
+                console.log(`renderMessages: сообщение ${msg.id} не имеет user_id, аватарка не будет показана`);
+            }
+            return null;
+        });
+        const avatarResults = await Promise.all(avatarPromises);
+        const avatarMap = {};
+        avatarResults.forEach(item => {
+            if (item) avatarMap[item.msgId] = item.avatarUrl;
+        });
 
         messages.forEach(msg => {
             const msgDiv = document.createElement('div');
@@ -566,13 +980,45 @@
             msgDiv.style.marginBottom = '10px';
             msgDiv.style.backgroundColor = '#d4d0c8';
             msgDiv.style.position = 'relative';
-            
+            msgDiv.style.display = 'flex';
+            msgDiv.style.gap = '10px';
+            msgDiv.style.alignItems = 'flex-start';
+
+            const avatarDiv = document.createElement('div');
+            avatarDiv.style.width = '48px';
+            avatarDiv.style.height = '48px';
+            avatarDiv.style.border = '2px solid #808080';
+            avatarDiv.style.borderTopColor = '#ffffff';
+            avatarDiv.style.borderLeftColor = '#ffffff';
+            avatarDiv.style.background = '#d4d0c8';
+            avatarDiv.style.flexShrink = '0';
+            avatarDiv.style.overflow = 'hidden';
+            avatarDiv.style.display = 'flex';
+            avatarDiv.style.alignItems = 'center';
+            avatarDiv.style.justifyContent = 'center';
+            avatarDiv.style.fontSize = '24px';
+
+            const avatarUrl = avatarMap[msg.id];
+            if (avatarUrl) {
+                console.log(`renderMessages: сообщение ${msg.id} получило аватарку`);
+                avatarDiv.innerHTML = `<img src="${avatarUrl}?t=${Date.now()}" style="width: 100%; height: 100%; object-fit: cover;">`;
+            } else {
+                avatarDiv.textContent = '👤';
+            }
+
+            const contentDiv = document.createElement('div');
+            contentDiv.style.flex = '1';
+            contentDiv.style.minWidth = '0';
+
             const date = msg.date ? new Date(msg.date).toLocaleString() : 'Unknown date';
-            msgDiv.innerHTML = `
-                <div style="font-weight: bold;">${escapeHtml(msg.name)}</div>
-                <div style="font-size: 11px; color: #404040;">${date}</div>
-                <div style="margin-top: 5px; white-space: pre-wrap;">${escapeHtml(msg.message)}</div>
+            contentDiv.innerHTML = `
+                <div style="font-weight: bold; color: #ffffff">${escapeHtml(msg.name)}</div>
+                <div style="font-size: 11px; color: #a7a7a7;">${date}</div>
+                <div style="margin-top: 5px; white-space: pre-wrap; color: #ffffff">${escapeHtml(msg.message)}</div>
             `;
+
+            msgDiv.appendChild(avatarDiv);
+            msgDiv.appendChild(contentDiv);
             gbMessages.appendChild(msgDiv);
         });
     }
@@ -591,9 +1037,9 @@
     // === Отправка сообщения ===
     async function performSendGuestbook(data) {
         const { name, message, ip, fingerprint } = data;
-        console.log('📤 performSendGuestbook, fingerprint:', fingerprint);
+        const user = currentUser;
 
-        const spamCheck = await checkSpamLimits('guestbook', ip, fingerprint, message);
+        const spamCheck = await checkSpamLimits('guestbook', user, ip, fingerprint, message);
         if (!spamCheck.allowed) {
             triggerErrorEffect();
             const errorDiv = document.createElement('div');
@@ -601,23 +1047,39 @@
             errorDiv.style.border = '2px solid #ff0000';
             errorDiv.style.padding = '8px';
             errorDiv.style.marginBottom = '10px';
-            errorDiv.textContent = spamCheck.reason + ' (ваш fingerprint: ' + fingerprint + ')';
+            errorDiv.textContent = spamCheck.reason;
             gbMessages.prepend(errorDiv);
             return;
         }
 
-        const { error } = await supabaseClient.from('guestbook').insert([
-            { name, message, ip_address: ip, fingerprint: fingerprint }
-        ]);
+        const insertData = { name, message, ip_address: ip, fingerprint };
+        if (user) {
+            insertData.user_id = user.id;
+            insertData.user_email = user.email;
+        }
 
-        if (error) {
-            triggerErrorEffect();
-        } else {
+        try {
+            const { error } = await supabaseClient.from('guestbook').insert([insertData]);
+            if (error) {
+                console.error('Ошибка вставки сообщения:', error);
+                triggerErrorEffect();
+                const errorDiv = document.createElement('div');
+                errorDiv.style.color = '#ff0000';
+                errorDiv.style.border = '2px solid #ff0000';
+                errorDiv.style.padding = '8px';
+                errorDiv.style.marginBottom = '10px';
+                errorDiv.textContent = 'Ошибка отправки: ' + error.message;
+                gbMessages.prepend(errorDiv);
+                return;
+            }
             gbName.value = '';
             gbMessage.value = '';
             guestbookCurrentPage = 0;
             await loadGuestbook(0);
             playChimesSound();
+        } catch (e) {
+            console.error('Исключение при отправке:', e);
+            triggerErrorEffect();
         }
     }
 
@@ -625,16 +1087,12 @@
         e.preventDefault();
         const name = gbName.value.trim();
         const message = gbMessage.value.trim();
-        if (!name || !message) {
-            triggerErrorEffect();
-            return;
-        }
+        if (!name || !message) { triggerErrorEffect(); return; }
 
         const ip = await getClientIP();
         const fingerprint = await getFingerprint();
-        console.log('🖊️ Отправка сообщения, fingerprint:', fingerprint);
 
-        const spamCheck = await checkSpamLimits('guestbook', ip, fingerprint, message);
+        const spamCheck = await checkSpamLimits('guestbook', currentUser, ip, fingerprint, message);
         if (!spamCheck.allowed) {
             triggerErrorEffect();
             const errorDiv = document.createElement('div');
@@ -642,7 +1100,7 @@
             errorDiv.style.border = '2px solid #ff0000';
             errorDiv.style.padding = '8px';
             errorDiv.style.marginBottom = '10px';
-            errorDiv.textContent = spamCheck.reason + ' (ваш fingerprint: ' + fingerprint + ')';
+            errorDiv.textContent = spamCheck.reason;
             gbMessages.prepend(errorDiv);
             return;
         }
@@ -1017,36 +1475,47 @@
     // === Сохранение рисунка ===
     async function performSavePainting(data) {
         const { imageData, ip, fingerprint } = data;
-        console.log('📤 performSavePainting, fingerprint:', fingerprint);
-        const spamCheck = await checkSpamLimits('paintings', ip, fingerprint, null);
+        const user = currentUser;
+
+        const spamCheck = await checkSpamLimits('paintings', user, ip, fingerprint, null);
         if (!spamCheck.allowed) {
             triggerErrorEffect();
-            alert(spamCheck.reason + ' (ваш fingerprint: ' + fingerprint + ')');
+            showError('Система', spamCheck.reason);
             return;
         }
-        const { error } = await supabaseClient.from('paintings').insert([{ image_data: imageData, ip_address: ip, fingerprint: fingerprint }]);
-        if (error) {
-            triggerErrorEffect();
-        } else {
+
+        const insertData = { image_data: imageData, ip_address: ip, fingerprint };
+        if (user) {
+            insertData.user_id = user.id;
+            insertData.user_email = user.email;
+        }
+
+        try {
+            const { error } = await supabaseClient.from('paintings').insert([insertData]);
+            if (error) {
+                console.error('Ошибка сохранения рисунка:', error);
+                triggerErrorEffect();
+                showError('Painter','Ошибка сохранения: ' + error.message);
+                return;
+            }
             playChimesSound();
             loadPaintings();
+        } catch (e) {
+            console.error('Исключение при сохранении рисунка:', e);
+            triggerErrorEffect();
         }
     }
 
     saveBtn.addEventListener('click', async (e) => {
         e.preventDefault();
-        if (isCanvasBlank()) {
-            triggerErrorEffect();
-            return;
-        }
+        if (isCanvasBlank()) { triggerErrorEffect(); return; }
         const ip = await getClientIP();
         const fingerprint = await getFingerprint();
-        console.log('🖌️ Сохранение рисунка, fingerprint:', fingerprint);
 
-        const spamCheck = await checkSpamLimits('paintings', ip, fingerprint, null);
+        const spamCheck = await checkSpamLimits('paintings', currentUser, ip, fingerprint, null);
         if (!spamCheck.allowed) {
             triggerErrorEffect();
-            alert(spamCheck.reason + ' (ваш fingerprint: ' + fingerprint + ')');
+            showError('Система', spamCheck.reason);
             return;
         }
 
@@ -1416,95 +1885,183 @@
 
     async function loadPaintings() {
         const offset = currentPage * pageSize;
-        const { data, error } = await supabaseClient
-            .from('paintings')
-            .select('id, image_data, created_at, likes')
-            .order('created_at', { ascending: false })
-            .range(offset, offset + pageSize - 1);
-        if (error) return;
-        if (totalPaintings === 0) await loadTotalCount();
+        try {
+            const { data, error } = await supabaseClient
+                .from('paintings')
+                .select('id, image_data, created_at, likes, user_id, user_email')
+                .order('created_at', { ascending: false })
+                .range(offset, offset + pageSize - 1);
 
-        document.getElementById('prevPageBtn').disabled = currentPage === 0;
-        document.getElementById('nextPageBtn').disabled = currentPage >= totalPages - 1;
-        document.getElementById('pageIndicator').textContent = `Page ${currentPage + 1}`;
-
-        let maxLikes = 0;
-        data.forEach(p => { if (p.likes > maxLikes) maxLikes = p.likes; });
-
-        gallery.innerHTML = '';
-        data.forEach(p => {
-            const paintingId = p.id;
-            const liked = myLikes.has(paintingId);
-            const isTop = (p.likes === maxLikes && maxLikes > 0);
-
-            const imgDiv = document.createElement('div');
-            imgDiv.className = 'painting';
-            imgDiv.style.border = '2px solid #808080';
-            imgDiv.style.borderRightColor = '#ffffff';
-            imgDiv.style.borderBottomColor = '#ffffff';
-            imgDiv.style.padding = '4px';
-            imgDiv.style.backgroundColor = '#d4d0c8';
-            imgDiv.style.textAlign = 'center';
-            imgDiv.style.marginBottom = '10px';
-            imgDiv.style.position = 'relative';
-
-            if (isTop) {
-                imgDiv.classList.add('top-painting');
-                addSparkles(imgDiv);
+            if (error) {
+                console.error('Ошибка загрузки paintings:', error);
+                gallery.innerHTML = '<p style="color: red;">Ошибка загрузки рисунков: ' + error.message + '</p>';
+                return;
             }
 
-            const img = document.createElement('img');
-            img.src = p.image_data;
-            img.style.maxWidth = '100%';
-            img.style.height = 'auto';
-            img.style.border = '1px solid black';
-            img.style.cursor = 'pointer';
-            img.addEventListener('click', () => openImageModal(paintingId));
-            imgDiv.appendChild(img);
+            if (totalPaintings === 0) await loadTotalCount();
 
-            const dateDiv = document.createElement('div');
-            dateDiv.style.fontSize = '10px';
-            dateDiv.style.marginTop = '4px';
-            dateDiv.textContent = new Date(p.created_at).toLocaleString();
-            imgDiv.appendChild(dateDiv);
+            document.getElementById('prevPageBtn').disabled = currentPage === 0;
+            document.getElementById('nextPageBtn').disabled = currentPage >= totalPages - 1;
+            document.getElementById('pageIndicator').textContent = `Page ${currentPage + 1}`;
 
-            const likeRow = document.createElement('div');
-            likeRow.style.display = 'flex';
-            likeRow.style.alignItems = 'center';
-            likeRow.style.justifyContent = 'center';
-            likeRow.style.marginTop = '5px';
-            likeRow.style.gap = '5px';
+            let maxLikes = 0;
+            data.forEach(p => { if (p.likes > maxLikes) maxLikes = p.likes; });
 
-            const likeCount = document.createElement('span');
-            likeCount.textContent = p.likes || 0;
-            likeCount.style.fontSize = '12px';
-            likeCount.style.fontWeight = 'bold';
+            gallery.innerHTML = '';
+            data.forEach(p => {
+                const paintingId = p.id;
+                const liked = myLikes.has(paintingId);
+                const isTop = (p.likes === maxLikes && maxLikes > 0);
 
-            const likeBtn = document.createElement('button');
-            likeBtn.className = 'like-button';
-            likeBtn.classList.add(liked ? 'liked' : 'unliked');
-            likeBtn.style.cursor = liked ? 'default' : 'pointer';
-            if (liked) likeBtn.disabled = true;
-            if (!liked) {
-                likeBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    likePainting(paintingId, likeBtn, likeCount);
-                });
-            }
+                const imgDiv = document.createElement('div');
+                imgDiv.className = 'painting';
+                imgDiv.style.border = '2px solid #808080';
+                imgDiv.style.borderRightColor = '#ffffff';
+                imgDiv.style.borderBottomColor = '#ffffff';
+                imgDiv.style.padding = '4px';
+                imgDiv.style.backgroundColor = '#d4d0c8';
+                imgDiv.style.textAlign = 'center';
+                imgDiv.style.marginBottom = '10px';
+                imgDiv.style.position = 'relative';
 
-            likeRow.appendChild(likeBtn);
-            likeRow.appendChild(likeCount);
-            imgDiv.appendChild(likeRow);
-            gallery.appendChild(imgDiv);
-        });
+                if (p.user_id) {
+                    const authorDiv = document.createElement('div');
+                    authorDiv.style.display = 'flex';
+                    authorDiv.style.alignItems = 'center';
+                    authorDiv.style.gap = '5px';
+                    authorDiv.style.marginBottom = '5px';
+                    authorDiv.style.fontSize = '11px';
+                    authorDiv.style.color = '#333';
+
+                    const avatarSmall = document.createElement('div');
+                    avatarSmall.style.width = '24px';
+                    avatarSmall.style.height = '24px';
+                    avatarSmall.style.border = '1px solid #808080';
+                    avatarSmall.style.borderTopColor = '#ffffff';
+                    avatarSmall.style.borderLeftColor = '#ffffff';
+                    avatarSmall.style.background = '#d4d0c8';
+                    avatarSmall.style.overflow = 'hidden';
+                    avatarSmall.style.display = 'flex';
+                    avatarSmall.style.alignItems = 'center';
+                    avatarSmall.style.justifyContent = 'center';
+                    avatarSmall.style.fontSize = '14px';
+                    avatarSmall.style.flexShrink = '0';
+
+                    (async () => {
+                        const avatarUrl = await fetchUserAvatar(p.user_id);
+                        if (avatarUrl) {
+                            avatarSmall.innerHTML = `<img src="${avatarUrl}?t=${Date.now()}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                        } else {
+                            avatarSmall.textContent = '👤';
+                        }
+                    })();
+
+                    authorDiv.appendChild(avatarSmall);
+                    const nameSpan = document.createElement('span');
+
+                    imgDiv.appendChild(authorDiv);
+                }
+                else{
+                    const authorDiv = document.createElement('div');
+                    authorDiv.style.display = 'flex';
+                    authorDiv.style.alignItems = 'center';
+                    authorDiv.style.gap = '5px';
+                    authorDiv.style.marginBottom = '5px';
+                    authorDiv.style.fontSize = '11px';
+                    authorDiv.style.color = '#333';
+
+                    const avatarSmall = document.createElement('div');
+                    avatarSmall.style.width = '24px';
+                    avatarSmall.style.height = '24px';
+                    avatarSmall.style.border = '1px solid #808080';
+                    avatarSmall.style.borderTopColor = '#ffffff';
+                    avatarSmall.style.borderLeftColor = '#ffffff';
+                    avatarSmall.style.background = '#d4d0c8';
+                    avatarSmall.style.overflow = 'hidden';
+                    avatarSmall.style.display = 'flex';
+                    avatarSmall.style.alignItems = 'center';
+                    avatarSmall.style.justifyContent = 'center';
+                    avatarSmall.style.fontSize = '14px';
+                    avatarSmall.style.flexShrink = '0';
+
+                    (async () => {
+                        const avatarUrl = await fetchUserAvatar(p.user_id);
+                        if (avatarUrl) {
+                            avatarSmall.innerHTML = `<img src="${avatarUrl}?t=${Date.now()}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                        } else {
+                            avatarSmall.textContent = '👤';
+                        }
+                    })();
+
+                    authorDiv.appendChild(avatarSmall);
+                    const nameSpan = document.createElement('span');
+
+                    imgDiv.appendChild(authorDiv);
+                }
+
+                if (isTop) {
+                    imgDiv.classList.add('top-painting');
+                    addSparkles(imgDiv);
+                }
+
+                const img = document.createElement('img');
+                img.src = p.image_data;
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+                img.style.border = '1px solid black';
+                img.style.cursor = 'pointer';
+                img.addEventListener('click', () => openImageModal(paintingId));
+                imgDiv.appendChild(img);
+
+                const dateDiv = document.createElement('div');
+                dateDiv.style.fontSize = '10px';
+                dateDiv.style.marginTop = '4px';
+                dateDiv.textContent = new Date(p.created_at).toLocaleString();
+                imgDiv.appendChild(dateDiv);
+
+                const likeRow = document.createElement('div');
+                likeRow.style.display = 'flex';
+                likeRow.style.alignItems = 'center';
+                likeRow.style.justifyContent = 'center';
+                likeRow.style.marginTop = '5px';
+                likeRow.style.gap = '5px';
+
+                const likeCount = document.createElement('span');
+                likeCount.textContent = p.likes || 0;
+                likeCount.style.fontSize = '12px';
+                likeCount.style.fontWeight = 'bold';
+
+                const likeBtn = document.createElement('button');
+                likeBtn.className = 'like-button';
+                likeBtn.classList.add(liked ? 'liked' : 'unliked');
+                likeBtn.style.cursor = liked ? 'default' : 'pointer';
+                if (liked) likeBtn.disabled = true;
+                if (!liked) {
+                    likeBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        likePainting(paintingId, likeBtn, likeCount);
+                    });
+                }
+
+                likeRow.appendChild(likeBtn);
+                likeRow.appendChild(likeCount);
+                imgDiv.appendChild(likeRow);
+                gallery.appendChild(imgDiv);
+            });
+        } catch (e) {
+            console.error('Исключение в loadPaintings:', e);
+            gallery.innerHTML = '<p style="color: red;">Ошибка загрузки рисунков</p>';
+        }
     }
 
     async function loadTotalCount() {
-        const { count, error } = await supabaseClient.from('paintings').select('*', { count: 'exact', head: true });
-        if (!error) {
-            totalPaintings = count;
-            totalPages = Math.ceil(totalPaintings / pageSize);
-        }
+        try {
+            const { count, error } = await supabaseClient.from('paintings').select('*', { count: 'exact', head: true });
+            if (!error) {
+                totalPaintings = count;
+                totalPages = Math.ceil(totalPaintings / pageSize);
+            }
+        } catch (e) {}
     }
 
     // ============== НАВИГАЦИЯ ==============
@@ -1549,7 +2106,6 @@
 
     // ============== ДЕНЬ РОЖДЕНИЯ: ПРОГРЕСС-БАР И КОНФЕТТИ ==============
 
-    // Конфетти (падают сверху, 300 шт., без прозрачности, заканчиваются когда все упадут)
     function startConfetti() {
         const oldContainer = document.getElementById('confetti-container');
         if (oldContainer) oldContainer.remove();
@@ -1679,18 +2235,16 @@
         animate();
     }
 
-    // Обновление прогресса и управление колпачком
     function updateBirthdayProgress() {
         const now = new Date();
         const year = now.getFullYear();
-        const startDate = new Date(year, 5, 1);  // 1 июня
-        const endDate = new Date(year, 7, 24);   // 24 августа
+        const startDate = new Date(year, 5, 1);
+        const endDate = new Date(year, 7, 24);
 
         const container = document.getElementById('birthday-progress-container');
         const progressBar = document.getElementById('birthday-progress-bar');
         const progressText = document.getElementById('birthday-progress-text');
 
-        // Колпачок именинника
         const hat = document.getElementById('birthdayHat');
         if (hat) {
             if (now.getMonth() === 7 && now.getDate() === 24) {
@@ -1700,7 +2254,6 @@
             }
         }
 
-        // Прогресс-бар
         if (now >= startDate && now <= endDate) {
             container.style.display = 'block';
             const totalMs = endDate - startDate;
@@ -1711,7 +2264,6 @@
             const daysLeft = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
             progressText.textContent = `Time remaining until the birthday ${daysLeft} days`;
 
-            // Запуск конфетти в день рождения (один раз)
             if (now.getMonth() === 7 && now.getDate() === 24) {
                 if (!window._birthdayCelebrated) {
                     window._birthdayCelebrated = true;
@@ -1725,11 +2277,16 @@
     }
 
     // ============== ИНИЦИАЛИЗАЦИЯ ==============
-    loadGuestbook(0);
-    (async () => {
+    (async function init() {
+        await checkAuth();
+        loadGuestbook(0);
         await loadMyLikes();
         await loadTotalCount();
         loadPaintings();
+        updateBirthdayProgress();
+
+        const fp = await getFingerprint();
+        console.log('🖨️ Ваш fingerprint (FingerprintJS или fallback):', fp);
     })();
 
     // Realtime обновления гостевой книги
@@ -1764,9 +2321,5 @@
         });
     }
 
-    // Запуск обновления прогресса при загрузке
-    updateBirthdayProgress();
-
-    console.log('✅ Защита активирована. Бан по fingerprint включён.');
-    console.log('🔍 Откройте консоль для просмотра отладочных логов.');
+    console.log('✅ main.js загружен (динамическая загрузка FingerprintJS, fallback, аватарки)');
 })();

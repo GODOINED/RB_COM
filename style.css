@@ -1219,3 +1219,95 @@ input[type=range]:focus {
     #paintGallery { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
     .color-swatch { width: 25px; height: 25px; }
 }
+
+/* ===== МОДАЛЬНОЕ ОКНО ОШИБКИ (Windows 95 Style) ===== */
+.error-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 50000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+.error-modal {
+    background-color: var(--modal-bg);
+    border: 3px solid var(--modal-border-light);
+    border-right-color: var(--modal-border-dark);
+    border-bottom-color: var(--modal-border-dark);
+    padding: 0;
+    width: 380px;
+    max-width: 90vw;
+    box-shadow: 4px 4px 0px var(--win-shadow);
+    font-family: 'W95Font', 'MS Sans Serif', sans-serif;
+}
+.error-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(90deg, var(--modal-header-start), var(--modal-header-end));
+    color: var(--modal-header-text);
+    padding: 6px 5px 6px 12px;
+    font-weight: bold;
+    font-size: 14px;
+}
+.error-modal-header .title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.error-modal-header .title .icon {
+    font-size: 18px;
+}
+.error-modal-header .close-btn {
+    width: 24px;
+    height: 24px;
+    background: var(--modal-close-bg);
+    border: 2px solid var(--modal-close-border-light);
+    border-right-color: var(--modal-close-border-dark);
+    border-bottom-color: var(--modal-close-border-dark);
+    color: var(--win-black);
+    text-align: center;
+    line-height: 20px;
+    cursor: default;
+    font-size: 18px;
+    font-family: 'W95Font', 'MS Sans Serif', sans-serif;
+}
+.error-modal-header .close-btn:active {
+    border: 2px solid var(--modal-close-border-dark);
+    border-right-color: var(--modal-close-border-light);
+    border-bottom-color: var(--modal-close-border-light);
+}
+.error-modal-body {
+    padding: 20px 16px 16px 16px;
+    background-color: var(--win-gray);
+    color: var(--title-text);
+}
+.error-modal-body .message {
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+.error-modal-body .buttons {
+    text-align: center;
+}
+.error-modal-body .buttons button {
+    min-width: 80px;
+    padding: 4px 16px;
+    background: var(--button-bg);
+    border: 2px solid var(--button-border-light);
+    border-right-color: var(--button-border-dark);
+    border-bottom-color: var(--button-border-dark);
+    color: var(--button-text-color);
+    font-family: inherit;
+    font-size: 13px;
+    cursor: default;
+}
+.error-modal-body .buttons button:active {
+    border: 2px solid var(--button-active-bg);
+    border-right-color: var(--button-active-border-light);
+    border-bottom-color: var(--button-active-border-light);
+}
