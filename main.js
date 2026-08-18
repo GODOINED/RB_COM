@@ -319,10 +319,23 @@
     registerSubmit.addEventListener('click', async () => {
         const email = registerEmail.value.trim();
         const password = registerPassword.value.trim();
-        if (!email || password.length < 6) { showError('Account', 'Email and password (min. 6 characters)'); return; }
-        const { error } = await supabaseClient.auth.signUp({ email, password });
-        if (error) { showError('Account', 'Sign in error:' + error.message); return; }
-        showError('Account', 'Sign in successful! Log in.');
+        if (!email || password.length < 6) {
+            showError('Ошибка регистрации', 'Email и пароль (мин. 6 символов) обязательны.');
+            return;
+        }
+        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) {
+            showError('Ошибка регистрации', error.message);
+            return;
+        }
+        // Если регистрация успешна и пользователь создан, создаём профиль
+        if (data.user) {
+            // Создаём профиль (upsert)
+            await supabaseClient
+                .from('profiles')
+                .upsert({ id: data.user.id, avatar_url: null, updated_at: new Date().toISOString() });
+        }
+        alert('Регистрация успешна! Войдите.');
         registerModal.style.display = 'none';
         loginModal.style.display = 'flex';
     });
