@@ -3,27 +3,27 @@
     'use strict';
 
     // === ЗАЩИТА КОНСОЛИ ===
-    const originalConsoleLog = //console.log;
+    const originalConsoleLog = console.log;
     const originalConsoleWarn = console.warn;
     const originalConsoleError = console.error;
 
-    //console.log = function(...args) {
+    console.log = function(...args) {
         const str = args.join(' ');
-        if (str.includes('banIP') || str.includes('banned_ips') || str.includes('supabase') || str.includes('fingerprint') || str.includes('auth') || str.includes('avatar')) {
-            return;
-        }
+        //if (str.includes('banIP') || str.includes('banned_ips') || str.includes('supabase') || str.includes('fingerprint') || str.includes('auth') || str.includes('avatar')) {
+        //    return;
+        //}
         originalConsoleLog.apply(console, args);
     };
 
-    Object.defineProperty(window, 'eval', {
-        get: function() { throw new Error('eval() запрещён'); },
-        set: function() {}
-    });
+    //Object.defineProperty(window, 'eval', {
+    //    get: function() { throw new Error('eval() запрещён'); },
+    //    set: function() {}
+    //});
 
-    Object.defineProperty(window, 'banIP', {
-        get: function() { throw new Error('Функция бана недоступна'); },
-        set: function() {}
-    });
+    //Object.defineProperty(window, 'banIP', {
+    //    get: function() { throw new Error('Функция бана недоступна'); },
+    //    set: function() {}
+    //});
 
     // === Звуки ===
     const clickSoundUrl = 'sounds/click.mp3';
@@ -337,6 +337,7 @@
     let cachedFingerprint = null;
 
     const FP_CDN_SOURCES = [
+        'https://fpjscdn.net/v4/YOUR_PUBLIC_API_KEY',
         'https://openfpcdn.io/fingerprintjs/v4/iife.min.js',
         'https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js',
         'https://unpkg.com/@fingerprintjs/fingerprintjs@3/dist/fp.min.js',
@@ -367,10 +368,10 @@
                     return true;
                 }
             } catch (e) {
-                console.warn(`⚠️ Не удалось загрузить с ${src}:`, e);
+                //console.warn(`⚠️ Не удалось загрузить с ${src}:`, e);
             }
         }
-        console.warn('❌ Не удалось загрузить FingerprintJS ни с одного источника.');
+        //console.warn('❌ Не удалось загрузить FingerprintJS ни с одного источника.');
         return false;
     }
 
@@ -446,11 +447,11 @@
                 }
                 if (visitorId) {
                     cachedFingerprint = visitorId;
-                    ////console.log('✅ Fingerprint (успешно):', visitorId);
+                    //console.log('✅ Fingerprint (успешно):', visitorId);
                     return visitorId;
                 }
             } catch (error) {
-                console.error('❌ Ошибка получения fingerprint:', error);
+                //console.error('❌ Ошибка получения fingerprint:', error);
             }
         }
 
@@ -471,15 +472,15 @@
 
     async function fetchUserAvatar(userId) {
         if (!userId) {
-            console.warn('fetchUserAvatar: userId не передан');
+            //console.warn('fetchUserAvatar: userId не передан');
             return null;
         }
         if (avatarCache.has(userId)) {
-            ////console.log(`fetchUserAvatar: кеш для ${userId} ->`, avatarCache.get(userId));
+            //console.log(`fetchUserAvatar: кеш для ${userId} ->`, avatarCache.get(userId));
             return avatarCache.get(userId);
         }
         try {
-            ////console.log(`fetchUserAvatar: запрос профиля для ${userId}`);
+            //console.log(`fetchUserAvatar: запрос профиля для ${userId}`);
             let { data, error } = await supabaseClient
                 .from('profiles')
                 .select('avatar_url')
@@ -487,12 +488,12 @@
                 .maybeSingle();
 
             if (error && error.code === 'PGRST116') {
-                ////console.log(`fetchUserAvatar: профиль для ${userId} не найден, создаём...`);
+                //console.log(`fetchUserAvatar: профиль для ${userId} не найден, создаём...`);
                 const { error: insertError } = await supabaseClient
                     .from('profiles')
                     .insert([{ id: userId, avatar_url: null }]);
                 if (insertError) {
-                    console.error('fetchUserAvatar: ошибка создания профиля:', insertError);
+                    //console.error('fetchUserAvatar: ошибка создания профиля:', insertError);
                     avatarCache.set(userId, null);
                     return null;
                 }
@@ -503,17 +504,17 @@
                     .maybeSingle();
                 if (newError) throw newError;
                 data = newData;
-                ////console.log(`fetchUserAvatar: профиль создан, avatar_url =`, data?.avatar_url);
+                //console.log(`fetchUserAvatar: профиль создан, avatar_url =`, data?.avatar_url);
             } else if (error) {
                 throw error;
             }
 
             const url = data?.avatar_url || null;
             avatarCache.set(userId, url);
-            ////console.log(`fetchUserAvatar: для ${userId} получен URL:`, url);
+            //console.log(`fetchUserAvatar: для ${userId} получен URL:`, url);
             return url;
         } catch (e) {
-            console.error('fetchUserAvatar: исключение:', e.message);
+            //console.error('fetchUserAvatar: исключение:', e.message);
             avatarCache.set(userId, null);
             return null;
         }
@@ -612,7 +613,7 @@
                 });
 
             if (uploadError) {
-                console.error('Ошибка загрузки в Storage:', uploadError);
+                //console.error('Ошибка загрузки в Storage:', uploadError);
                 avatarStatus.textContent = '❌ Ошибка загрузки: ' + uploadError.message;
                 avatarStatus.style.color = 'red';
                 avatarInput.value = '';
@@ -630,7 +631,7 @@
                 .upsert({ id: currentUser.id, avatar_url: avatarUrl, updated_at: new Date().toISOString() });
 
             if (updateError) {
-                console.error('Ошибка обновления профиля:', updateError);
+                //console.error('Ошибка обновления профиля:', updateError);
                 avatarStatus.textContent = '❌ Ошибка сохранения: ' + updateError.message;
                 avatarStatus.style.color = 'red';
                 avatarInput.value = '';
@@ -647,7 +648,7 @@
             await loadPaintings();
 
         } catch (err) {
-            console.error('Ошибка:', err);
+            //console.error('Ошибка:', err);
             avatarStatus.textContent = '❌ Ошибка: ' + err.message;
             avatarStatus.style.color = 'red';
             avatarInput.value = '';
@@ -694,7 +695,7 @@
             await loadPaintings();
 
         } catch (err) {
-            console.error('Ошибка удаления:', err);
+            //console.error('Ошибка удаления:', err);
             avatarStatus.textContent = '❌ Ошибка: ' + err.message;
             avatarStatus.style.color = 'red';
         }
@@ -781,7 +782,7 @@
             .gte(dateField, startTime.toISOString());
 
         if (error) {
-            console.error('Ошибка подсчёта лимитов:', error);
+            //console.error('Ошибка подсчёта лимитов:', error);
             return { allowed: false, reason: 'Ошибка проверки лимитов' };
         }
 
@@ -921,7 +922,7 @@
                 .range(offset, offset + guestbookPageSize - 1);
 
             if (error) {
-                console.error('Ошибка загрузки guestbook:', error);
+                //console.error('Ошибка загрузки guestbook:', error);
                 gbMessages.innerHTML = '<p style="color: red;">Failed to load messages: ' + error.message + '</p>';
                 return;
             }
@@ -932,7 +933,7 @@
             updateGuestbookPagination();
             await renderMessages(data || []);
         } catch (e) {
-            console.error('Исключение в loadGuestbook:', e);
+            //console.error('Исключение в loadGuestbook:', e);
             gbMessages.innerHTML = '<p style="color: red;">Ошибка загрузки сообщений</p>';
         }
     }
@@ -1061,7 +1062,7 @@
         try {
             const { error } = await supabaseClient.from('guestbook').insert([insertData]);
             if (error) {
-                console.error('Ошибка вставки сообщения:', error);
+                //console.error('Ошибка вставки сообщения:', error);
                 triggerErrorEffect();
                 const errorDiv = document.createElement('div');
                 errorDiv.style.color = '#ff0000';
@@ -1078,7 +1079,7 @@
             await loadGuestbook(0);
             playChimesSound();
         } catch (e) {
-            console.error('Исключение при отправке:', e);
+            //console.error('Исключение при отправке:', e);
             triggerErrorEffect();
         }
     }
@@ -1493,7 +1494,7 @@
         try {
             const { error } = await supabaseClient.from('paintings').insert([insertData]);
             if (error) {
-                console.error('Ошибка сохранения рисунка:', error);
+                //console.error('Ошибка сохранения рисунка:', error);
                 triggerErrorEffect();
                 showError('Painter','Save error: ' + error.message);
                 return;
@@ -1501,7 +1502,7 @@
             playChimesSound();
             loadPaintings();
         } catch (e) {
-            console.error('Исключение при сохранении рисунка:', e);
+            //console.error('Исключение при сохранении рисунка:', e);
             triggerErrorEffect();
         }
     }
@@ -1893,7 +1894,7 @@
                 .range(offset, offset + pageSize - 1);
 
             if (error) {
-                console.error('Ошибка загрузки paintings:', error);
+                //console.error('Ошибка загрузки paintings:', error);
                 gallery.innerHTML = '<p style="color: red;">Ошибка загрузки рисунков: ' + error.message + '</p>';
                 return;
             }
@@ -2049,7 +2050,7 @@
                 gallery.appendChild(imgDiv);
             });
         } catch (e) {
-            console.error('Исключение в loadPaintings:', e);
+            //console.error('Исключение в loadPaintings:', e);
             gallery.innerHTML = '<p style="color: red;">Ошибка загрузки рисунков</p>';
         }
     }
