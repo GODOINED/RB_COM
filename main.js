@@ -3,11 +3,11 @@
     'use strict';
 
     // === ЗАЩИТА КОНСОЛИ ===
-    const originalConsoleLog = console.log;
+    const originalConsoleLog = //console.log;
     const originalConsoleWarn = console.warn;
     const originalConsoleError = console.error;
 
-    console.log = function(...args) {
+    //console.log = function(...args) {
         const str = args.join(' ');
         if (str.includes('banIP') || str.includes('banned_ips') || str.includes('supabase') || str.includes('fingerprint') || str.includes('auth') || str.includes('avatar')) {
             return;
@@ -360,10 +360,10 @@
         }
         for (const src of FP_CDN_SOURCES) {
             try {
-                console.log(`⏳ Пробуем загрузить FingerprintJS с ${src}...`);
+                //console.log(`⏳ Пробуем загрузить FingerprintJS с ${src}...`);
                 await loadScript(src);
                 if (typeof FingerprintJS !== 'undefined' || typeof Fingerprint2 !== 'undefined') {
-                    console.log(`✅ FingerprintJS загружен с ${src}`);
+                    //console.log(`✅ FingerprintJS загружен с ${src}`);
                     return true;
                 }
             } catch (e) {
@@ -377,7 +377,7 @@
     function generateFallbackFingerprint() {
         const stored = localStorage.getItem('device_fp');
         if (stored) {
-            console.log('ℹ️ Используем сохранённый fallback fingerprint:', stored);
+            //console.log('ℹ️ Используем сохранённый fallback fingerprint:', stored);
             return stored;
         }
         const components = [];
@@ -418,7 +418,7 @@
         }
         const fp = 'fp_' + Math.abs(hash).toString(16).padStart(8, '0');
         localStorage.setItem('device_fp', fp);
-        console.log('⚠️ Сгенерирован fallback fingerprint:', fp);
+        //console.log('⚠️ Сгенерирован fallback fingerprint:', fp);
         return fp;
     }
 
@@ -446,7 +446,7 @@
                 }
                 if (visitorId) {
                     cachedFingerprint = visitorId;
-                    console.log('✅ Fingerprint (успешно):', visitorId);
+                    ////console.log('✅ Fingerprint (успешно):', visitorId);
                     return visitorId;
                 }
             } catch (error) {
@@ -475,11 +475,11 @@
             return null;
         }
         if (avatarCache.has(userId)) {
-            console.log(`fetchUserAvatar: кеш для ${userId} ->`, avatarCache.get(userId));
+            ////console.log(`fetchUserAvatar: кеш для ${userId} ->`, avatarCache.get(userId));
             return avatarCache.get(userId);
         }
         try {
-            console.log(`fetchUserAvatar: запрос профиля для ${userId}`);
+            ////console.log(`fetchUserAvatar: запрос профиля для ${userId}`);
             let { data, error } = await supabaseClient
                 .from('profiles')
                 .select('avatar_url')
@@ -487,7 +487,7 @@
                 .maybeSingle();
 
             if (error && error.code === 'PGRST116') {
-                console.log(`fetchUserAvatar: профиль для ${userId} не найден, создаём...`);
+                ////console.log(`fetchUserAvatar: профиль для ${userId} не найден, создаём...`);
                 const { error: insertError } = await supabaseClient
                     .from('profiles')
                     .insert([{ id: userId, avatar_url: null }]);
@@ -503,14 +503,14 @@
                     .maybeSingle();
                 if (newError) throw newError;
                 data = newData;
-                console.log(`fetchUserAvatar: профиль создан, avatar_url =`, data?.avatar_url);
+                ////console.log(`fetchUserAvatar: профиль создан, avatar_url =`, data?.avatar_url);
             } else if (error) {
                 throw error;
             }
 
             const url = data?.avatar_url || null;
             avatarCache.set(userId, url);
-            console.log(`fetchUserAvatar: для ${userId} получен URL:`, url);
+            ////console.log(`fetchUserAvatar: для ${userId} получен URL:`, url);
             return url;
         } catch (e) {
             console.error('fetchUserAvatar: исключение:', e.message);
@@ -953,15 +953,15 @@
             return;
         }
 
-        console.log(`📝 Рендерим ${messages.length} сообщений`);
+        //console.log(`📝 Рендерим ${messages.length} сообщений`);
 
         const avatarPromises = messages.map(async (msg) => {
             if (msg.user_id) {
-                console.log(`renderMessages: загружаем аватарку для user_id=${msg.user_id}, сообщение ID=${msg.id}`);
+                //console.log(`renderMessages: загружаем аватарку для user_id=${msg.user_id}, сообщение ID=${msg.id}`);
                 const url = await fetchUserAvatar(msg.user_id);
                 return { msgId: msg.id, avatarUrl: url };
             } else {
-                console.log(`renderMessages: сообщение ${msg.id} не имеет user_id, аватарка не будет показана`);
+                //console.log(`renderMessages: сообщение ${msg.id} не имеет user_id, аватарка не будет показана`);
             }
             return null;
         });
@@ -1000,7 +1000,7 @@
 
             const avatarUrl = avatarMap[msg.id];
             if (avatarUrl) {
-                console.log(`renderMessages: сообщение ${msg.id} получило аватарку`);
+                //console.log(`renderMessages: сообщение ${msg.id} получило аватарку`);
                 avatarDiv.innerHTML = `<img src="${avatarUrl}?t=${Date.now()}" style="width: 100%; height: 100%; object-fit: cover;">`;
             } else {
                 avatarDiv.textContent = '👤';
@@ -2286,7 +2286,7 @@
         updateBirthdayProgress();
 
         const fp = await getFingerprint();
-        console.log('🖨️ Ваш fingerprint (FingerprintJS или fallback):', fp);
+        //console.log('🖨️ Ваш fingerprint (FingerprintJS или fallback):', fp);
     })();
 
     // Realtime обновления гостевой книги
@@ -2321,5 +2321,5 @@
         });
     }
 
-    console.log('✅ main.js загружен (динамическая загрузка FingerprintJS, fallback, аватарки)');
+    //console.log('✅ main.js загружен (динамическая загрузка FingerprintJS, fallback, аватарки)');
 })();
