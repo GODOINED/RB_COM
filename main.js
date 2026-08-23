@@ -2238,6 +2238,13 @@
     }
 
     function updateBirthdayProgress() {
+        // === ЗАПУСК КОНФЕТТИ ПРИ ЗАГРУЗКЕ ===
+        if (!window._birthdayCelebrated) {
+            window._birthdayCelebrated = true;
+            setTimeout(() => startConfetti(), 500); // небольшая задержка для красоты
+        }
+
+        // === ПРОГРЕСС-БАР (оставляем как есть) ===
         const now = new Date();
         const year = now.getFullYear();
         const startDate = new Date(year, 5, 1);
@@ -2265,16 +2272,8 @@
             progressBar.textContent = Math.round(progress) + '%';
             const daysLeft = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
             progressText.textContent = `Time remaining until the birthday ${daysLeft} days`;
-
-            if (now.getMonth() === 7 && now.getDate() === 24) {
-                if (!window._birthdayCelebrated) {
-                    window._birthdayCelebrated = true;
-                    startConfetti();
-                }
-            }
         } else {
             container.style.display = 'none';
-            window._birthdayCelebrated = false;
         }
     }
 
