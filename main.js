@@ -2,6 +2,165 @@
 (function() {
     'use strict';
 
+    // ===== VPN БЛОКИРОВКА =====
+    let isBlocked = false;
+
+    function showBlockedScreen(ip) {
+        if (document.getElementById('vpnBlockScreen')) return;
+        isBlocked = true;
+        const blockHtml = `
+            <div id="vpnBlockScreen" style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: #1a1a2e;
+                color: #fff;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                font-family: 'W95Font', 'MS Sans Serif', sans-serif;
+                z-index: 999999;
+                padding: 20px;
+                text-align: center;
+                user-select: none;
+                -webkit-user-select: none;
+            ">
+                <div style="
+                    background: #d4d0c8;
+                    border: 4px solid #808080;
+                    border-top-color: #ffffff;
+                    border-left-color: #ffffff;
+                    padding: 30px;
+                    max-width: 500px;
+                    box-shadow: 8px 8px 0px rgba(0,0,0,0.5);
+                ">
+                    <div style="font-size: 48px; margin-bottom: 10px;">🚫</div>
+                    <h2 style="color: #000; margin-bottom: 10px;">Доступ запрещён</h2>
+                    <p style="color: #333; font-size: 16px; line-height: 1.5;">
+                        Ваш IP-адрес определён как <strong>VPN или прокси</strong>.<br>
+                        Для доступа к сайту отключите VPN и обновите страницу.
+                    </p>
+                    <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+                        <button onclick="location.reload()" style="
+                            padding: 8px 24px;
+                            background: #a7499f;
+                            border: 2px solid #d66fce;
+                            border-right-color: #753070;
+                            border-bottom-color: #753070;
+                            color: #fff;
+                            font-family: inherit;
+                            font-size: 16px;
+                            cursor: default;
+                        ">Обновить страницу</button>
+                    </div>
+                    <div style="margin-top: 15px; font-size: 12px; color: #666;">
+                        Ваш IP: <span id="blocked-ip">${ip}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.innerHTML = blockHtml;
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.overflow = 'hidden';
+        sessionStorage.setItem('vpn_blocked', 'true');
+        protectBlockScreen();
+    }
+
+    function protectBlockScreen() {
+        const targetNode = document.getElementById('vpnBlockScreen');
+        if (!targetNode) return;
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
+                    if (!document.getElementById('vpnBlockScreen')) {
+                        location.reload();
+                    }
+                }
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        const attrObserver = new MutationObserver(() => {
+            const block = document.getElementById('vpnBlockScreen');
+            if (block) {
+                if (block.style.display === 'none') block.style.display = 'flex';
+                if (block.style.visibility === 'hidden') block.style.visibility = 'visible';
+                if (block.style.opacity === '0') block.style.opacity = '1';
+            }
+        });
+        attrObserver.observe(targetNode, { attributes: true, attributeFilter: ['style', 'class'] });
+        const interval = setInterval(() => {
+            const block = document.getElementById('vpnBlockScreen');
+            if (!block) {
+                location.reload();
+            } else {
+                if (block.style.display === 'none' || block.style.visibility === 'hidden' || block.style.opacity === '0') {
+                    block.style.display = 'flex';
+                    block.style.visibility = 'visible';
+                    block.style.opacity = '1';
+                }
+            }
+        }, 500);
+        window._blockObservers = { observer, attrObserver, interval };
+    }
+
+    // === ПРОВЕРКА VPN (без ключей, без регистрации) ===
+    async function isVPN(ip) {
+        if (!ip || ip === '0.0.0.0' || ip === '127.0.0.1') return false;
+
+        // Проверяем кэш
+        const cached = sessionStorage.getItem('vpn_check_' + ip);
+        if (cached !== null) return cached === 'true';
+
+        try {
+            // Пробуем ipapi.is (бесплатно, без ключа, есть поле vpn)
+            const response = await fetch(`https://ipapi.is/${ip}`);
+            if (response.ok) {
+                const data = await response.json();
+                // ipapi.is возвращает поле vpn (true/false)
+                if (data.vpn === true) {
+                    sessionStorage.setItem('vpn_check_' + ip, 'true');
+                    return true;
+                }
+            }
+        } catch (e) {
+            console.warn('ipapi.is error:', e);
+        }
+
+        // Запасной вариант — ip-api.com (поля proxy нет на бесплатном тарифе, но может сработать)
+        try {
+            const response = await fetch(`https://ip-api.com/json/${ip}?fields=proxy,isp,org`);
+            if (response.ok) {
+                const data = await response.json();
+                // Проверяем proxy, а также ISP на наличие ключевых слов
+                if (data.proxy === true) {
+                    sessionStorage.setItem('vpn_check_' + ip, 'true');
+                    return true;
+                }
+                // Дополнительная проверка: если ISP содержит "VPN", "Proxy", "Hosting", "Cloud", "Server"
+                const isp = (data.isp || '').toLowerCase();
+                const org = (data.org || '').toLowerCase();
+                const keywords = ['vpn', 'proxy', 'hosting', 'cloud', 'server', 'datacenter', 'm247', 'ovh', 'digitalocean', 'vultr', 'aws', 'azure', 'gcp'];
+                for (const kw of keywords) {
+                    if (isp.includes(kw) || org.includes(kw)) {
+                        sessionStorage.setItem('vpn_check_' + ip, 'true');
+                        return true;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('ip-api.com error:', e);
+        }
+
+        sessionStorage.setItem('vpn_check_' + ip, 'false');
+        return false;
+    }
+
+    async function checkVPN(ip) {
+        return await isVPN(ip);
+    }
     // === ЗАЩИТА КОНСОЛИ ===
     const originalConsoleLog = console.log;
     const originalConsoleWarn = console.warn;
@@ -713,6 +872,106 @@
         }
     }
 
+    // === ПРОВЕРКА VPN/ПРОКСИ ===
+    // === ПРОВЕРКА VPN (IPPriv — без ключа, 100 запросов/час) ===
+    async function isVPN(ip) {
+        if (!ip || ip === '0.0.0.0' || ip === '127.0.0.1' || ip === '::1') return false;
+
+        const cached = sessionStorage.getItem('vpn_check_' + ip);
+        if (cached !== null) return cached === 'true';
+
+        // 1. Сначала пробуем IPPriv (быстрый и точный)
+        try {
+            const response = await fetch(`https://api.ippriv.com/api/security/${ip}`);
+            if (response.ok) {
+                const data = await response.json();
+                // Проверяем флаги: isVPN, isProxy, isTor (и isHosting тоже можно, но обычно не блокируем хостеров)
+                const isBad = data.isVPN === true || data.isProxy === true || data.isTor === true;
+                if (isBad) {
+                    sessionStorage.setItem('vpn_check_' + ip, 'true');
+                    return true;
+                }
+            }
+        } catch (e) { /* ignore */ }
+
+        // 2. Если IPPriv не ответил или не нашёл, пробуем ipapi.is
+        try {
+            const response = await fetch(`https://ipapi.is/${ip}`);
+            if (response.ok) {
+                const data = await response.json();
+                const isBad = data.is_vpn === true || data.is_proxy === true || data.is_abuser === true;
+                if (isBad) {
+                    sessionStorage.setItem('vpn_check_' + ip, 'true');
+                    return true;
+                }
+            }
+        } catch (e) { /* ignore */ }
+
+        // Если оба не сработали, считаем безопасным
+        sessionStorage.setItem('vpn_check_' + ip, 'false');
+        return false;
+    }
+
+    // === БЛОКИРОВКА ДОСТУПА ===
+    function showBlockedScreen() {
+        // Удаляем всё содержимое страницы и показываем блокировку
+        document.body.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: #1a1a2e;
+                color: #fff;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                font-family: 'W95Font', 'MS Sans Serif', sans-serif;
+                z-index: 999999;
+                padding: 20px;
+                text-align: center;
+            ">
+                <div style="
+                    background: #d4d0c8;
+                    border: 4px solid #808080;
+                    border-top-color: #ffffff;
+                    border-left-color: #ffffff;
+                    padding: 30px;
+                    max-width: 500px;
+                    box-shadow: 8px 8px 0px rgba(0,0,0,0.5);
+                ">
+                    <div style="font-size: 48px; margin-bottom: 10px;">🚫</div>
+                    <h2 style="color: #000; margin-bottom: 10px;">Доступ запрещён</h2>
+                    <p style="color: #333; font-size: 16px; line-height: 1.5;">
+                        Ваш IP-адрес определён как <strong>VPN или прокси</strong>.<br>
+                        Для доступа к сайту отключите VPN и обновите страницу.
+                    </p>
+                    <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+                        <button onclick="location.reload()" style="
+                            padding: 8px 24px;
+                            background: #a7499f;
+                            border: 2px solid #d66fce;
+                            border-right-color: #753070;
+                            border-bottom-color: #753070;
+                            color: #fff;
+                            font-family: inherit;
+                            font-size: 16px;
+                            cursor: default;
+                        ">Обновить страницу</button>
+                    </div>
+                    <div style="margin-top: 15px; font-size: 12px; color: #666;">
+                        Ваш IP: <span id="blocked-ip"></span>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.getElementById('blocked-ip').textContent = ip;
+        // Отключаем все скрипты и взаимодействие
+        document.body.style.pointerEvents = 'auto';
+    }
+
     // === Проверка бана IP ===
     async function isIPBanned(ip) {
         if (ip === '0.0.0.0') return false;
@@ -753,6 +1012,54 @@
             showError('System', 'Fingerprint ban error');
         } else {
             showError('System', 'Fingerprint has been banned!');
+        }
+    }
+
+    // ===================== БАН ПОЛЬЗОВАТЕЛЕЙ =====================
+    async function isUserBanned(userId) {
+        if (!userId) return false;
+        try {
+            const { data, error } = await supabaseClient
+                .from('banned_users')
+                .select('id')
+                .eq('user_id', userId)
+                .maybeSingle();
+            if (error) {
+                console.error('Ошибка проверки бана пользователя:', error);
+                return false;
+            }
+            return !!data;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    async function banUser(userId, reason = 'Забанен администратором') {
+        if (!userId) return;
+        if (await isUserBanned(userId)) {
+            showError('Бан пользователя', 'Этот пользователь уже забанен.');
+            return;
+        }
+        const { error } = await supabaseClient
+            .from('banned_users')
+            .insert([{ user_id: userId, reason }]);
+        if (error) {
+            showError('Бан пользователя', 'Не удалось забанить пользователя: ' + error.message);
+        } else {
+            showError('Бан пользователя', 'Пользователь успешно забанен!');
+        }
+    }
+
+    async function unbanUser(userId) {
+        if (!userId) return;
+        const { error } = await supabaseClient
+            .from('banned_users')
+            .delete()
+            .eq('user_id', userId);
+        if (error) {
+            showError('Разбан пользователя', 'Не удалось разбанить пользователя: ' + error.message);
+        } else {
+            showError('Разбан пользователя', 'Пользователь разбанен.');
         }
     }
 
@@ -2334,8 +2641,25 @@
 
     // ============== ИНИЦИАЛИЗАЦИЯ ==============
     (async function init() {
+        // Если уже заблокирован – не проверяем заново
+        if (sessionStorage.getItem('vpn_blocked') === 'true') {
+            showBlockedScreen('заблокирован');
+            return;
+        }
+        
+        // === ПРОВЕРКА VPN ===
+        const ip = await getClientIP();
+        const isVpn = await isVPN(ip);
+        if (isVpn) {
+            showBlockedScreen(ip);
+            return;
+        }
+
+        sessionStorage.removeItem('vpn_blocked');
+
+        // Остальной код инициализации
         await checkAuth();
-        await cleanOldRecords(); // <-- добавить
+        await cleanOldRecords();
         loadGuestbook(0);
         await loadMyLikes();
         await loadTotalCount();
