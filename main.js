@@ -758,24 +758,36 @@
 
     // === Проверка спам-лимитов + бан ===
     async function checkSpamLimits(table, user, ip, fingerprint, messageOrImageHash) {
+        // === БАНЫ ===
+        if (user && user.id && (await isUserBanned(user.id))) {
+            return { allowed: false, reason: 'Ваш аккаунт забанен.' };
+        }
         if (fingerprint && (await isFingerprintBanned(fingerprint))) {
-            return { allowed: false, reason: 'Your device has been banned.' };
+            return { allowed: false, reason: 'Ваше устройство забанено.' };
         }
         if (await isIPBanned(ip)) {
-            return { allowed: false, reason: 'Your IP has been banned.' };
+            return { allowed: false, reason: 'Ваш IP забанен.' };
         }
 
         const now = new Date();
         const isLoggedIn = user && user.id;
-        const idField = isLoggedIn ? 'user_id' : 'ip_address';
-        const idValue = isLoggedIn ? user.id : ip;
+
+        // === ЛИМИТЫ ПО FINGERPRINT (для гостей) ===
+        let idField, idValue;
+        if (isLoggedIn) {
+            idField = 'user_id';
+            idValue = user.id;
+        } else {
+            idField = fingerprint ? 'fingerprint' : 'ip_address';
+            idValue = fingerprint || ip;
+        }
 
         const limit = isLoggedIn ? 5 : 1;
         const timeWindow = isLoggedIn ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
         const startTime = new Date(now.getTime() - timeWindow);
-
         const dateField = (table === 'guestbook') ? 'date' : 'created_at';
 
+        // Проверяем количество записей
         const { count, error } = await supabaseClient
             .from(table)
             .select('*', { count: 'exact', head: true })
@@ -783,18 +795,31 @@
             .gte(dateField, startTime.toISOString());
 
         if (error) {
-            //console.error('Ошибка подсчёта лимитов:', error);
+            console.error('Ошибка подсчёта лимитов:', error);
             return { allowed: false, reason: 'Ошибка проверки лимитов' };
         }
 
+        // Если лимит превышен
         if (count >= limit) {
             const noun = table === 'guestbook' ? 'сообщений' : 'рисунков';
             const period = isLoggedIn ? 'час' : 'день';
+
+            // === АВТО-БАН IP при 3-кратном превышении (спам) ===
+            if (!isLoggedIn && count >= limit * 3) {
+                // Баним IP на сутки
+                await supabaseClient
+                    .from('banned_ips')
+                    .insert([{ ip_address: ip, reason: 'Автоматический бан за спам' }]);
+                console.log(`🚫 IP ${ip} автоматически забанен за спам (${count} записей)`);
+                return { allowed: false, reason: 'Ваш IP забанен за спам.' };
+            }
+
             return { allowed: false, reason: `Вы исчерпали лимит (${count}/${limit}) ${noun} за ${period}.` };
         }
 
+        // === ЗАЩИТА ОТ ДУБЛИКАТОВ (для гостей) ===
         if (table === 'guestbook' && messageOrImageHash && !isLoggedIn) {
-            const fiveMinutesAgo = new Date(now.getTime() - 5*60*1000);
+            const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
             const { count: dupCount, error: dupError } = await supabaseClient
                 .from(table)
                 .select('*', { count: 'exact', head: true })
@@ -802,11 +827,28 @@
                 .eq('message', messageOrImageHash)
                 .gte(dateField, fiveMinutesAgo.toISOString());
             if (!dupError && dupCount > 0) {
-                return { allowed: false, reason: 'Вы уже отправляли такое сообщение недавно.' };
+                return { allowed: false, reason: 'Вы уже отправляли такое сообщение недавно. Подождите 5 минут.' };
             }
         }
 
         return { allowed: true };
+    }
+
+    async function cleanOldRecords() {
+        const now = new Date();
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+        // Удаляем сообщения старше 30 дней
+        await supabaseClient
+            .from('guestbook')
+            .delete()
+            .lt('date', monthAgo.toISOString());
+
+        // Удаляем рисунки старше 30 дней
+        await supabaseClient
+            .from('paintings')
+            .delete()
+            .lt('created_at', monthAgo.toISOString());
     }
 
     // ============== ГОСТЕВАЯ КНИГА ==============
@@ -1089,21 +1131,27 @@
         e.preventDefault();
         const name = gbName.value.trim();
         const message = gbMessage.value.trim();
-        if (!name || !message) { triggerErrorEffect(); return; }
-
+        if (!name || !message) {
+            showError('Send message', 'Please fill in your name and message.');
+            return;
+        }
+        // === ОГРАНИЧЕНИЕ ДЛИНЫ СООБЩЕНИЯ ===
+        const MAX_MESSAGE_LENGTH = 500; // можно изменить
+        if (message.length > MAX_MESSAGE_LENGTH) {
+            showError('Send message', `The message must not exceed ${MAX_MESSAGE_LENGTH} characters. Current: ${message.length}.`);
+            return;
+        }
+        const MAX_NAME_LENGTH = 50;
+        if (name.length > MAX_NAME_LENGTH) {
+            showError('Send message', `The name must not exceed ${MAX_NAME_LENGTH} characters.`);
+            return;
+        }
         const ip = await getClientIP();
         const fingerprint = await getFingerprint();
 
         const spamCheck = await checkSpamLimits('guestbook', currentUser, ip, fingerprint, message);
         if (!spamCheck.allowed) {
-            triggerErrorEffect();
-            const errorDiv = document.createElement('div');
-            errorDiv.style.color = '#ff0000';
-            errorDiv.style.border = '2px solid #ff0000';
-            errorDiv.style.padding = '8px';
-            errorDiv.style.marginBottom = '10px';
-            errorDiv.textContent = spamCheck.reason;
-            gbMessages.prepend(errorDiv);
+            showError('Send message', spamCheck.reason);
             return;
         }
 
@@ -2238,17 +2286,10 @@
     }
 
     function updateBirthdayProgress() {
-        // === ЗАПУСК КОНФЕТТИ ПРИ ЗАГРУЗКЕ ===
-        if (!window._birthdayCelebrated) {
-            window._birthdayCelebrated = true;
-            setTimeout(() => startConfetti(), 500); // небольшая задержка для красоты
-        }
-
-        // === ПРОГРЕСС-БАР (оставляем как есть) ===
         const now = new Date();
         const year = now.getFullYear();
-        const startDate = new Date(year, 5, 1);
-        const endDate = new Date(year, 7, 24);
+        const startDate = new Date(year, 5, 1);   // 1 июня
+        const endDate = new Date(year, 7, 24);    // 24 августа
 
         const container = document.getElementById('birthday-progress-container');
         const progressBar = document.getElementById('birthday-progress-bar');
@@ -2263,6 +2304,20 @@
             }
         }
 
+        // === КОНФЕТТИ ТОЛЬКО В ДЕНЬ РОЖДЕНИЯ ===
+        if (now.getMonth() === 7 && now.getDate() === 24) {
+            // Проверяем, запускали ли уже конфетти сегодня
+            const today = now.toDateString();
+            if (localStorage.getItem('confetti_last_run') !== today) {
+                localStorage.setItem('confetti_last_run', today);
+                setTimeout(() => startConfetti(), 500);
+            }
+        } else {
+            // Если сегодня не день рождения, очищаем флаг, чтобы в следующий день рождения конфетти снова запустились
+            localStorage.removeItem('confetti_last_run');
+        }
+
+        // === ПРОГРЕСС-БАР (оставляем как было) ===
         if (now >= startDate && now <= endDate) {
             container.style.display = 'block';
             const totalMs = endDate - startDate;
@@ -2280,6 +2335,7 @@
     // ============== ИНИЦИАЛИЗАЦИЯ ==============
     (async function init() {
         await checkAuth();
+        await cleanOldRecords(); // <-- добавить
         loadGuestbook(0);
         await loadMyLikes();
         await loadTotalCount();
