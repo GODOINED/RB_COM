@@ -886,7 +886,8 @@
             if (response.ok) {
                 const data = await response.json();
                 // Проверяем флаги: isVPN, isProxy, isTor (и isHosting тоже можно, но обычно не блокируем хостеров)
-                const isBad = data.isVPN === true || data.isProxy === true || data.isTor === true;
+                //const isBad = data.isVPN === true || data.isProxy === true || data.isTor === true;
+                const isBad = data.isVPN === true || data.isProxy === true;
                 if (isBad) {
                     sessionStorage.setItem('vpn_check_' + ip, 'true');
                     return true;
@@ -899,7 +900,8 @@
             const response = await fetch(`https://ipapi.is/${ip}`);
             if (response.ok) {
                 const data = await response.json();
-                const isBad = data.is_vpn === true || data.is_proxy === true || data.is_abuser === true;
+                const isBad = data.is_vpn === true || data.is_proxy === true;
+                //const isBad = data.is_vpn === true || data.is_proxy === true || data.is_abuser === true;
                 if (isBad) {
                     sessionStorage.setItem('vpn_check_' + ip, 'true');
                     return true;
