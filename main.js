@@ -40,8 +40,8 @@
                     <div style="font-size: 48px; margin-bottom: 10px;">🚫</div>
                     <h2 style="color: #000; margin-bottom: 10px;">Доступ запрещён</h2>
                     <p style="color: #333; font-size: 16px; line-height: 1.5;">
-                        Ваш IP-адрес определён как <strong>VPN или прокси</strong>.<br>
-                        Для доступа к сайту отключите VPN и обновите страницу.
+                        Your IP address is determined as <strong>VPN or proxy</strong>.<br>
+                        To access the site, disable your VPN and refresh the page.
                     </p>
                     <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
                         <button onclick="location.reload()" style="
@@ -54,7 +54,7 @@
                             font-family: inherit;
                             font-size: 16px;
                             cursor: default;
-                        ">Обновить страницу</button>
+                        ">Refresh the page</button>
                     </div>
                     <div style="margin-top: 15px; font-size: 12px; color: #666;">
                         Ваш IP: <span id="blocked-ip">${ip}</span>
@@ -945,10 +945,10 @@
                     box-shadow: 8px 8px 0px rgba(0,0,0,0.5);
                 ">
                     <div style="font-size: 48px; margin-bottom: 10px;">🚫</div>
-                    <h2 style="color: #000; margin-bottom: 10px;">Доступ запрещён</h2>
+                    <h2 style="color: #000; margin-bottom: 10px;">Access denied</h2>
                     <p style="color: #333; font-size: 16px; line-height: 1.5;">
-                        Ваш IP-адрес определён как <strong>VPN или прокси</strong>.<br>
-                        Для доступа к сайту отключите VPN и обновите страницу.
+                        Your IP address has been identified as <strong>VPN or proxy</strong>.<br>
+                        To access the site, disable your VPN and refresh the page.
                     </p>
                     <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
                         <button onclick="location.reload()" style="
@@ -961,10 +961,10 @@
                             font-family: inherit;
                             font-size: 16px;
                             cursor: default;
-                        ">Обновить страницу</button>
+                        ">Refresh the page</button>
                     </div>
                     <div style="margin-top: 15px; font-size: 12px; color: #666;">
-                        Ваш IP: <span id="blocked-ip"></span>
+                        Your IP: <span id="blocked-ip"></span>
                     </div>
                 </div>
             </div>
