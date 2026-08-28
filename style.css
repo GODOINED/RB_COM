@@ -1,39 +1,29 @@
 /* ===== ПОЛНОСТЬЮ КАСТОМИЗИРУЕМЫЙ СТИЛЬ С АНИМИРОВАННЫМИ ГРАДИЕНТАМИ ===== */
 :root {
-    /* Основные цвета интерфейса */
     --win-gray: #81397b;
     --win-dark-gray: #ac64a6;
     --win-darker: #5e2659;
     --win-light: #a84ea1;
     --win-black: #000000;
     --win-shadow: #00000080;
-
-    /* Заголовок окна (статичный градиент по умолчанию) */
     --title-start: #7c0080;
     --title-end: #ba10d0;
     --title-text: #ffffff;
     --title-text-gray: #d88fd8;
-
-    /* Выделение и ссылки */
     --highlight-bg: #9d35a7;
     --highlight-text: #ffffff;
     --link-color: #7c0080;
-
-    /* Гостевая книга */
     --gb-bg: #b955b1;
     --gb-border: #d66fce;
     --gb-border-light: #8b3d85;
-    --gb-text-muted: #412d40;
+    --gb-text-muted: #ffffff;
     --gb-input-bg: #81397b;
     --gb-input-border: #ffffff;
     --gb-text: #ffffff;
-
-    /* Слои */
     --layer-bg: #b955b1;
     --layer-border: #8b3d85;
     --layer-border-light: #d66fce;
     --layer-background-bg: #b955b1;
-    --layer-border: #b955b1;
     --layer-active-bg: #6b0080;
     --layer-active-text: #ffffff;
     --layer-visibility-bg: #ae6cbe;
@@ -41,8 +31,6 @@
     --layer-move-btn-bg: #b955b1;
     --layer-move-btn-border-light: #d66fce;
     --layer-move-btn-border-dark: #8b3d85;
-
-    /* Кнопки */
     --button-bg: #a7499f;
     --button-border-light: #d66fce;
     --button-border-dark: #753070;
@@ -50,8 +38,6 @@
     --button-active-border-light: #7c3b77;
     --button-active-border-dark: #80397a;
     --button-text-color: #ffffff;
-
-    /* Модальные окна */
     --modal-overlay: rgba(0, 0, 0, 0.7);
     --modal-overlay-dark: rgba(0, 0, 0, 0.8);
     --modal-bg: #81397b;
@@ -66,39 +52,28 @@
     --modal-input-border: #f5adff;
     --modal-input-bg: #ffffff;
     --modal-error-bg: #ffcccc;
-
-    /* Статус-бар */
     --status-bg: #6e3370;
     --status-border: #9144a8;
     --status-dot: #eb2beb;
-
-    /* Популярный рисунок */
     --top-bg: #ffe246;
     --top-border: gold;
     --top-border-dark: #b8860b;
-
-    /* Ошибка */
     --error-shadow: rgba(255, 0, 0, 0.7);
     --error-overlay: rgba(255, 0, 0, 0.3);
-
-    /* Clippy */
     --clippy-bubble-bg: #ffffe1;
     --clippy-bubble-border: #000080;
-
-    /* Анимированный фон страницы (по умолчанию тёмный градиент) */
     --bg-color1: #1e1e1e;
     --bg-color2: #2d2d2d;
     --bg-color3: #3a3a3a;
-
-    /* Дополнительные переменные для анимированных градиентов интерфейса */
-    --win-bg-gradient: linear-gradient(45deg, #492045,#81397b);
+    --win-bg-gradient: linear-gradient(45deg, #492045, #81397b);
     --win-bg-animation: win98Gradient 5s linear infinite;
     --title-gradient: linear-gradient(90deg, #660080, #6b3a77, #660080);
     --title-animation: win98Gradient 15s linear infinite;
     --gradient-size: 200% 200%;
+    --glow-color: #ff69ff;
+    --glow-color-strong: #ff00ff;
 }
 
-/* ===== ШРИФТЫ ===== */
 @font-face {
     font-family: 'W95Font';
     src: url('webfont/MSW98UI-Regular.woff2') format('woff2'),
@@ -114,7 +89,6 @@
     font-style: normal;
 }
 
-/* ===== АНИМАЦИИ ===== */
 @keyframes shake {
     0% { transform: translateX(0); }
     25% { transform: translateX(-5px); }
@@ -148,28 +122,43 @@
     50% { opacity: 1; }
     100% { opacity: 0; }
 }
-@keyframes hatSwing {
-    0%, 100% { transform: translateX(-50%) rotate(0deg); }
-    50% { transform: translateX(-50%) rotate(6deg); }
+
+/* ===== НОВАЯ АНИМАЦИЯ ЗАГРУЗКИ ===== */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.loading-spinner {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    border: 4px solid #d4d0c8;
+    border-top: 4px solid #000080;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 10px auto;
+}
+#modalLoading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+#modalLoading .loading-dots {
+    font-size: 16px;
+    color: #000080;
+    margin-top: 10px;
 }
 
-/* ===== ОСНОВНЫЕ СТИЛИ ===== */
+/* ===== ОСНОВНЫЕ СТИЛИ (без изменений, оставлены ваши) ===== */
 * {
     font-size: 15px;
     box-sizing: border-box;
     font-family: 'W95Font', 'MS Sans Serif', 'Microsoft Sans Serif', 'Tahoma', 'Arial', sans-serif;
 }
-
-/* Анимированный фон страницы */
 body {
-    background: linear-gradient(
-        45deg,
-        var(--bg-color1) 0%,
-        var(--bg-color2) 25%,
-        var(--bg-color3) 50%,
-        var(--bg-color2) 75%,
-        var(--bg-color1) 100%
-    );
+    background: linear-gradient(45deg, var(--bg-color1) 0%, var(--bg-color2) 25%, var(--bg-color3) 50%, var(--bg-color2) 75%, var(--bg-color1) 100%);
     background-size: var(--gradient-size, 400% 400%);
     animation: win98Gradient 24s ease infinite;
     min-height: 100vh;
@@ -179,13 +168,11 @@ body {
     margin: 0;
     padding: 10px;
 }
-
 body.modal-open {
     overflow: hidden;
     padding-right: 18px;
 }
 
-/* ===== ГЛАВНОЕ ОКНО ===== */
 .win95-window {
     background: var(--win-bg-gradient, var(--win-gray));
     background-size: var(--gradient-size, auto);
@@ -204,7 +191,6 @@ body.modal-open {
     position: relative;
     z-index: 2000;
 }
-
 .window-title {
     background: var(--title-gradient, linear-gradient(90deg, var(--title-start), var(--title-end)));
     background-size: var(--gradient-size, auto);
@@ -303,7 +289,6 @@ body.modal-open {
     border-left-color: var(--win-light);
 }
 
-/* ===== КОНТЕНТ ===== */
 .window-content {
     display: flex;
     background: transparent;
@@ -312,7 +297,6 @@ body.modal-open {
     flex: 1;
     min-height: 0;
 }
-
 .left-panel {
     width: 220px;
     background: var(--win-light);
@@ -324,7 +308,6 @@ body.modal-open {
     height: 100%;
     flex-shrink: 0;
 }
-
 .folder-list {
     list-style: none;
     padding-inline-start: 0;
@@ -414,14 +397,9 @@ body.modal-open {
     padding: 15px 22px 15px 15px !important;
 }
 
-/* Список слоёв */
 #layersList {
     max-height: 150px;
     background-color: var(--button-active-border-dark) !important;
-    border-right-color: var(--win-light) !important;
-    border-bottom-color: var(--win-light) !important;
-    border-left-color: var(--win-dark-gray) !important;
-    border-top-color: var(--win-dark-gray) !important;
     border: 2px inset;
     padding: 4px;
     overflow: hidden;
@@ -488,8 +466,6 @@ body.modal-open {
     max-width: 100%;
     height: auto;
 }
-
-/* Обёртка для аватарки и колпачка */
 .avatar-wrapper {
     position: relative;
     display: inline-block;
@@ -502,7 +478,6 @@ body.modal-open {
     display: none;
     z-index: 10;
     pointer-events: none;
-    /* анимация удалена — колпачок неподвижен */
 }
 .birthday-hat.show {
     display: block;
@@ -512,7 +487,6 @@ body.modal-open {
     color: var(--title-text);
 }
 
-/* Проекты */
 .projects-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -573,7 +547,6 @@ body.modal-open {
     border-bottom-color: var(--button-active-border-light);
 }
 
-/* Paint */
 .canvas-container {
     position: relative;
     width: 570px;
@@ -607,7 +580,7 @@ body.modal-open {
     display: flex;
     flex-direction: column;
     gap: 15px;
-    color: var(--title-text)
+    color: var(--title-text);
 }
 .paint-row {
     display: flex;
@@ -615,7 +588,6 @@ body.modal-open {
     flex-wrap: nowrap;
     padding-bottom: 5px;
 }
-
 .color-palette {
     display: grid;
     grid-template-columns: repeat(4, 30px);
@@ -663,16 +635,15 @@ input[type=range]:focus {
     outline: none;
 }
 
-#guestbookPageIndicator{
+#guestbookPageIndicator {
     color: var(--title-text);
 }
 
-/* ===== ГОСТЕВАЯ КНИГА ===== */
 .guestbook-messages {
     margin-top: 20px;
 }
-.guestbook-form{
-    color: var(--link-color)
+.guestbook-form {
+    color: var(--link-color);
 }
 #gbMessages > div {
     border: 2px solid var(--gb-border) !important;
@@ -696,7 +667,6 @@ input[type=range]:focus {
     color: var(--gb-text) !important;
 }
 
-/* ===== МОДАЛЬНЫЕ ОКНА ===== */
 .captcha-overlay {
     position: fixed;
     top: 0;
@@ -823,7 +793,6 @@ input[type=range]:focus {
     background: white;
 }
 
-/* ===== CLIPPY ===== */
 .clippy-container {
     position: fixed;
     bottom: 20px;
@@ -872,7 +841,6 @@ input[type=range]:focus {
     border-top: 10px solid var(--clippy-bubble-bg);
 }
 
-/* ===== СТАТУС-БАР ===== */
 .status-bar {
     background: var(--status-bg);
     border-top: 2px solid var(--status-border);
@@ -885,13 +853,12 @@ input[type=range]:focus {
 .status-bar span {
     border-right: 1px dotted var(--status-dot);
     padding-right: 12px;
-    color: var(--title-text)
+    color: var(--title-text);
 }
 .status-bar span:last-child {
     border-right: none;
 }
 
-/* ===== КНОПКА ЛАЙКА ===== */
 .like-button {
     background: none;
     border: none;
@@ -921,8 +888,7 @@ input[type=range]:focus {
     background-image: url('materialsl/liked.png');
 }
 
-/* ===== ПОПУЛЯРНЫЙ РИСУНОК ===== */
-.painting{
+.painting {
     background-color: var(--button-bg) !important;
     border: 3px solid var(--button-border-light) !important;
     border-right-color: var(--button-border-dark) !important;
@@ -963,14 +929,7 @@ input[type=range]:focus {
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(
-        115deg,
-        transparent 0%,
-        rgba(255,255,255,0.8) 35%,
-        rgba(255,255,255,1) 45%,
-        rgba(255,255,255,0.8) 55%,
-        transparent 70%
-    );
+    background: linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.8) 35%, rgba(255,255,255,1) 45%, rgba(255,255,255,0.8) 55%, transparent 70%);
     background-size: 250% 250%;
     background-repeat: no-repeat;
     pointer-events: none;
@@ -980,7 +939,6 @@ input[type=range]:focus {
     border-radius: inherit;
 }
 
-/* ===== БЛЁСТКИ ===== */
 .sparkle {
     position: absolute;
     background-image: url('materialsl/star.png');
@@ -994,8 +952,7 @@ input[type=range]:focus {
     animation: blinkDots 1s infinite;
 }
 
-/* ===== СЛОИ ===== */
-.layers-panel{
+.layers-panel {
     background-color: var(--layer-background-bg);
     border: 2px solid var(--gb-border) !important;
     border-right-color: var(--gb-border-light) !important;
@@ -1071,7 +1028,6 @@ input[type=range]:focus {
     border-bottom-color: var(--layer-move-btn-border-light);
 }
 
-/* ===== МОДАЛЬНОЕ ОКНО ПЕРЕИМЕНОВАНИЯ СЛОЯ ===== */
 .rename-modal-overlay {
     position: fixed;
     top: 0;
@@ -1142,13 +1098,11 @@ input[type=range]:focus {
     min-width: 80px;
 }
 
-/* ===== ЭФФЕКТ ОШИБКИ ===== */
 .error-effect {
     animation: shake 0.3s ease-in-out;
     box-shadow: 0 0 20px var(--error-shadow);
 }
 
-/* ===== ПРОГРЕСС-БАР ДНЯ РОЖДЕНИЯ (НИЖНИЙ) ===== */
 #birthday-progress-container {
     position: fixed;
     bottom: 10px;
@@ -1200,34 +1154,13 @@ input[type=range]:focus {
     100% { transform: rotate(0deg); }
 }
 
-/* ===== АДАПТИВНОСТЬ ===== */
-@media (max-width: 800px) {
-    .left-panel { width: 150px; }
-    .paint-row { flex-wrap: wrap !important; }
-    .canvas-container { width: 100%; height: auto; max-width: 570px; margin: 0 auto; }
-    .canvas-container canvas { width: 100%; height: auto; }
-    .paint-panel { flex: 0 0 100%; width: 100%; }
-    .paint-panel > div:first-child { flex-wrap: wrap; }
-    * { font-size: 14px; }
-    .project-button, a.project-button, .tool-button { padding: 4px 8px; font-size: 12px; }
-    #paintGallery { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
-}
-@media (max-width: 500px) {
-    .left-panel { width: 120px; }
-    .paint-panel > div:first-child button,
-    .paint-panel > div:first-child a.project-button { font-size: 11px; padding: 3px 4px; }
-    #paintGallery { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
-    .color-swatch { width: 25px; height: 25px; }
-}
-
-/* ===== МОДАЛЬНОЕ ОКНО ОШИБКИ (Windows 95 Style) ===== */
 .error-modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
+    background-color: rgba(0,0,0,0.6);
     z-index: 50000;
     display: none;
     justify-content: center;
@@ -1310,4 +1243,51 @@ input[type=range]:focus {
     border: 2px solid var(--button-active-bg);
     border-right-color: var(--button-active-border-light);
     border-bottom-color: var(--button-active-border-light);
+}
+
+@media (max-width: 800px) {
+    .left-panel { width: 150px; }
+    .paint-row { flex-wrap: wrap !important; }
+    .canvas-container { width: 100%; height: auto; max-width: 570px; margin: 0 auto; }
+    .canvas-container canvas { width: 100%; height: auto; }
+    .paint-panel { flex: 0 0 100%; width: 100%; }
+    .paint-panel > div:first-child { flex-wrap: wrap; }
+    * { font-size: 14px; }
+    .project-button, a.project-button, .tool-button { padding: 4px 8px; font-size: 12px; }
+    #paintGallery { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+}
+@media (max-width: 500px) {
+    .left-panel { width: 120px; }
+    .paint-panel > div:first-child button,
+    .paint-panel > div:first-child a.project-button { font-size: 11px; padding: 3px 4px; }
+    #paintGallery { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
+    .color-swatch { width: 25px; height: 25px; }
+}
+
+/* Резкое отображение GIF-анимаций без сглаживания */
+img.loading-gif,
+img.nope-gif {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges; /* для Firefox */
+    image-rendering: -webkit-optimize-contrast; /* для Safari */
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -o-crisp-edges;
+}
+.loading-gif {
+    width: 48px;   /* замени на точные размеры твоего GIF */
+    height: 48px;
+    image-rendering: pixelated !important;
+    image-rendering: crisp-edges !important;
+    image-rendering: -webkit-optimize-contrast !important;
+    image-rendering: -moz-crisp-edges !important;
+    image-rendering: -o-crisp-edges !important;
+    /* Для Safari на macOS */
+    image-rendering: auto !important; /* Safari игнорирует pixelated, но можно попробовать */
+}
+
+.nope-gif {
+    width: 64px;
+    height: 64px;
+    image-rendering: pixelated !important;
+    /* все остальные префиксы */
 }

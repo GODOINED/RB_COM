@@ -1,200 +1,9 @@
-// main.js — полная версия (динамическая загрузка FingerprintJS, аватарки, аккаунты)
+// main.js — with loading indicators and GIF animations (all texts and comments in English)
 (function() {
     'use strict';
 
-    // ===== VPN БЛОКИРОВКА =====
-    let isBlocked = false;
-
-    function showBlockedScreen(ip) {
-        if (document.getElementById('vpnBlockScreen')) return;
-        isBlocked = true;
-        const blockHtml = `
-            <div id="vpnBlockScreen" style="
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: #1a1a2e;
-                color: #fff;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                font-family: 'W95Font', 'MS Sans Serif', sans-serif;
-                z-index: 999999;
-                padding: 20px;
-                text-align: center;
-                user-select: none;
-                -webkit-user-select: none;
-            ">
-                <div style="
-                    background: #d4d0c8;
-                    border: 4px solid #808080;
-                    border-top-color: #ffffff;
-                    border-left-color: #ffffff;
-                    padding: 30px;
-                    max-width: 500px;
-                    box-shadow: 8px 8px 0px rgba(0,0,0,0.5);
-                ">
-                    <div style="font-size: 48px; margin-bottom: 10px;">🚫</div>
-                    <h2 style="color: #000; margin-bottom: 10px;">Доступ запрещён</h2>
-                    <p style="color: #333; font-size: 16px; line-height: 1.5;">
-                        Your IP address is determined as <strong>VPN or proxy</strong>.<br>
-                        To access the site, disable your VPN and refresh the page.
-                    </p>
-                    <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
-                        <button onclick="location.reload()" style="
-                            padding: 8px 24px;
-                            background: #a7499f;
-                            border: 2px solid #d66fce;
-                            border-right-color: #753070;
-                            border-bottom-color: #753070;
-                            color: #fff;
-                            font-family: inherit;
-                            font-size: 16px;
-                            cursor: default;
-                        ">Refresh the page</button>
-                    </div>
-                    <div style="margin-top: 15px; font-size: 12px; color: #666;">
-                        Ваш IP: <span id="blocked-ip">${ip}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.innerHTML = blockHtml;
-        document.body.style.pointerEvents = 'auto';
-        document.body.style.overflow = 'hidden';
-        sessionStorage.setItem('vpn_blocked', 'true');
-        protectBlockScreen();
-    }
-
-    function protectBlockScreen() {
-        const targetNode = document.getElementById('vpnBlockScreen');
-        if (!targetNode) return;
-        const observer = new MutationObserver((mutations) => {
-            for (const mutation of mutations) {
-                if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
-                    if (!document.getElementById('vpnBlockScreen')) {
-                        location.reload();
-                    }
-                }
-            }
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-        const attrObserver = new MutationObserver(() => {
-            const block = document.getElementById('vpnBlockScreen');
-            if (block) {
-                if (block.style.display === 'none') block.style.display = 'flex';
-                if (block.style.visibility === 'hidden') block.style.visibility = 'visible';
-                if (block.style.opacity === '0') block.style.opacity = '1';
-            }
-        });
-        attrObserver.observe(targetNode, { attributes: true, attributeFilter: ['style', 'class'] });
-        const interval = setInterval(() => {
-            const block = document.getElementById('vpnBlockScreen');
-            if (!block) {
-                location.reload();
-            } else {
-                if (block.style.display === 'none' || block.style.visibility === 'hidden' || block.style.opacity === '0') {
-                    block.style.display = 'flex';
-                    block.style.visibility = 'visible';
-                    block.style.opacity = '1';
-                }
-            }
-        }, 500);
-        window._blockObservers = { observer, attrObserver, interval };
-    }
-
-    // === ПРОВЕРКА VPN (без ключей, без регистрации) ===
-    async function isVPN(ip) {
-        if (!ip || ip === '0.0.0.0' || ip === '127.0.0.1') return false;
-
-        // Проверяем кэш
-        const cached = sessionStorage.getItem('vpn_check_' + ip);
-        if (cached !== null) return cached === 'true';
-
-        try {
-            // Пробуем ipapi.is (бесплатно, без ключа, есть поле vpn)
-            const response = await fetch(`https://ipapi.is/${ip}`);
-            if (response.ok) {
-                const data = await response.json();
-                // ipapi.is возвращает поле vpn (true/false)
-                if (data.vpn === true) {
-                    sessionStorage.setItem('vpn_check_' + ip, 'true');
-                    return true;
-                }
-            }
-        } catch (e) {
-            console.warn('ipapi.is error:', e);
-        }
-
-        // Запасной вариант — ip-api.com (поля proxy нет на бесплатном тарифе, но может сработать)
-        try {
-            const response = await fetch(`https://ip-api.com/json/${ip}?fields=proxy,isp,org`);
-            if (response.ok) {
-                const data = await response.json();
-                // Проверяем proxy, а также ISP на наличие ключевых слов
-                if (data.proxy === true) {
-                    sessionStorage.setItem('vpn_check_' + ip, 'true');
-                    return true;
-                }
-                // Дополнительная проверка: если ISP содержит "VPN", "Proxy", "Hosting", "Cloud", "Server"
-                const isp = (data.isp || '').toLowerCase();
-                const org = (data.org || '').toLowerCase();
-                const keywords = ['vpn', 'proxy', 'hosting', 'cloud', 'server', 'datacenter', 'm247', 'ovh', 'digitalocean', 'vultr', 'aws', 'azure', 'gcp'];
-                for (const kw of keywords) {
-                    if (isp.includes(kw) || org.includes(kw)) {
-                        sessionStorage.setItem('vpn_check_' + ip, 'true');
-                        return true;
-                    }
-                }
-            }
-        } catch (e) {
-            console.warn('ip-api.com error:', e);
-        }
-
-        sessionStorage.setItem('vpn_check_' + ip, 'false');
-        return false;
-    }
-
-    async function checkVPN(ip) {
-        return await isVPN(ip);
-    }
-    // === ЗАЩИТА КОНСОЛИ ===
-    const originalConsoleLog = console.log;
-    const originalConsoleWarn = console.warn;
-    const originalConsoleError = console.error;
-
-    console.log = function(...args) {
-        const str = args.join(' ');
-        //if (str.includes('banIP') || str.includes('banned_ips') || str.includes('supabase') || str.includes('fingerprint') || str.includes('auth') || str.includes('avatar')) {
-        //    return;
-        //}
-        originalConsoleLog.apply(console, args);
-    };
-
-    //Object.defineProperty(window, 'eval', {
-    //    get: function() { throw new Error('eval() запрещён'); },
-    //    set: function() {}
-    //});
-
-    //Object.defineProperty(window, 'banIP', {
-    //    get: function() { throw new Error('Функция бана недоступна'); },
-    //    set: function() {}
-    //});
-
-    // === Звуки ===
-    const clickSoundUrl = 'sounds/click.mp3';
-    const chimesSoundUrl = 'sounds/chimes.mp3';
-    const chordSoundUrl = 'sounds/chord.mp3';
-
-    let clickSound = null, chimesSound = null, chordSound = null;
-    let soundsEnabled = true;
-
-    // ===== СТИЛИЗОВАННОЕ ОКНО ОШИБКИ =====
+    // ===== STYLIZED ERROR MODAL =====
     function showError(title, message) {
-        // Создаём overlay, если его нет
         let overlay = document.getElementById('errorModalOverlay');
         if (!overlay) {
             overlay = document.createElement('div');
@@ -203,11 +12,11 @@
             overlay.innerHTML = `
                 <div class="error-modal">
                     <div class="error-modal-header">
-                        <span class="title"><span class="icon">⚠️</span> <span id="errorModalTitle">Ошибка</span></span>
+                        <span class="title"><span class="icon">⚠️</span> <span id="errorModalTitle">Error</span></span>
                         <button class="close-btn" id="errorModalCloseBtn">×</button>
                     </div>
                     <div class="error-modal-body">
-                        <div class="message" id="errorModalMessage">Произошла ошибка.</div>
+                        <div class="message" id="errorModalMessage">An error occurred.</div>
                         <div class="buttons">
                             <button id="errorModalOkBtn">OK</button>
                         </div>
@@ -215,8 +24,6 @@
                 </div>
             `;
             document.body.appendChild(overlay);
-
-            // Закрытие по кнопке
             document.getElementById('errorModalCloseBtn').addEventListener('click', closeErrorModal);
             document.getElementById('errorModalOkBtn').addEventListener('click', closeErrorModal);
             overlay.addEventListener('click', function(e) {
@@ -228,19 +35,13 @@
                 }
             });
         }
-
-        document.getElementById('errorModalTitle').textContent = title || 'Ошибка';
-        document.getElementById('errorModalMessage').textContent = message || 'Произошла неизвестная ошибка.';
+        document.getElementById('errorModalTitle').textContent = title || 'Error';
+        document.getElementById('errorModalMessage').textContent = message || 'An unknown error occurred.';
         overlay.style.display = 'flex';
-        // Эффект дрожания (как в каптче)
         const modal = overlay.querySelector('.error-modal');
         modal.classList.add('shake-modal');
         setTimeout(() => modal.classList.remove('shake-modal'), 300);
-        // Звук ошибки (если есть функция playChordSound, можно вызвать)
         if (typeof playChordSound === 'function') playChordSound();
-        // Эффект красной вспышки (если есть функция triggerErrorEffect, можно вызвать)
-        if (typeof triggerErrorEffect === 'function') triggerErrorEffect();
-        // Отключаем прокрутку
         document.body.classList.add('modal-open');
     }
 
@@ -251,7 +52,38 @@
             document.body.classList.remove('modal-open');
         }
     }
-    
+
+    // ===== CONSOLE PROTECTION =====
+    const originalConsoleLog = console.log;
+    const originalConsoleWarn = console.warn;
+    const originalConsoleError = console.error;
+
+    console.log = function(...args) {
+        const str = args.join(' ');
+        if (str.includes('banIP') || str.includes('banned_ips') || str.includes('supabase') || str.includes('fingerprint') || str.includes('auth') || str.includes('avatar')) {
+            return;
+        }
+        originalConsoleLog.apply(console, args);
+    };
+
+    Object.defineProperty(window, 'eval', {
+        get: function() { throw new Error('eval() is forbidden'); },
+        set: function() {}
+    });
+
+    Object.defineProperty(window, 'banIP', {
+        get: function() { throw new Error('Ban function is unavailable'); },
+        set: function() {}
+    });
+
+    // ===== SOUNDS =====
+    const clickSoundUrl = 'sounds/click.mp3';
+    const chimesSoundUrl = 'sounds/chimes.mp3';
+    const chordSoundUrl = 'sounds/chord.mp3';
+
+    let clickSound = null, chimesSound = null, chordSound = null;
+    let soundsEnabled = true;
+
     function playClickSound() {
         if (!soundsEnabled) return;
         if (!clickSound) {
@@ -284,7 +116,7 @@
 
     document.addEventListener('click', playClickSound);
 
-    // === Настройки ===
+    // ===== SETTINGS =====
     const soundsCheckbox = document.getElementById('soundsCheckbox');
     const autosaveCheckbox = document.getElementById('autosaveCheckbox');
     const themeDark = document.getElementById('themeDark');
@@ -412,12 +244,12 @@
     autosaveCheckbox.addEventListener('change', function(e) { if (e.target.checked) saveSettings(); });
     loadSettings();
 
-    // === Supabase клиент ===
+    // ===== SUPABASE =====
     const SUPABASE_URL = 'https://zirkmegtqfkfvyatgbgf.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_PB_s3zWbWYA-0-BtqH1M7g_7De-juWW';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // === ТЕКУЩИЙ ПОЛЬЗОВАТЕЛЬ ===
+    // ===== CURRENT USER =====
     let currentUser = null;
     let isLoggedIn = false;
 
@@ -435,14 +267,14 @@
         } else {
             currentUser = null;
             isLoggedIn = false;
-            document.getElementById('userStatus').textContent = '👤 Гость';
+            document.getElementById('userStatus').textContent = '👤 Guest';
             document.getElementById('loginBtn').style.display = 'inline-block';
             document.getElementById('registerBtn').style.display = 'inline-block';
             document.getElementById('logoutBtn').style.display = 'none';
         }
     }
 
-    // === АУТЕНТИФИКАЦИЯ (UI) ===
+    // ===== AUTHENTICATION =====
     const loginModal = document.getElementById('loginModal');
     const registerModal = document.getElementById('registerModal');
     const loginBtn = document.getElementById('loginBtn');
@@ -467,9 +299,15 @@
     loginSubmit.addEventListener('click', async () => {
         const email = loginEmail.value.trim();
         const password = loginPassword.value.trim();
-        if (!email || !password) { showError('Account', 'Enter email and password'); return; }
+        if (!email || !password) {
+            showError('Account', 'Please enter email and password.');
+            return;
+        }
         const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (error) { showError('Account', 'Login error: ' + error.message); return; }
+        if (error) {
+            showError('Account', 'Login error: ' + error.message);
+            return;
+        }
         loginModal.style.display = 'none';
         await checkAuth();
         location.reload();
@@ -478,10 +316,16 @@
     registerSubmit.addEventListener('click', async () => {
         const email = registerEmail.value.trim();
         const password = registerPassword.value.trim();
-        if (!email || password.length < 6) { showError('Account', 'Email and password (min. 6 characters)'); return; }
+        if (!email || password.length < 6) {
+            showError('Account', 'Please provide a valid email and password (min. 6 characters).');
+            return;
+        }
         const { error } = await supabaseClient.auth.signUp({ email, password });
-        if (error) { showError('Account', 'Sign in error:' + error.message); return; }
-        showError('Account', 'Sign in successful! Log in.');
+        if (error) {
+            showError('Account', 'Sign up error: ' + error.message);
+            return;
+        }
+        showError('Account', 'Sign up successful! Please log in.');
         registerModal.style.display = 'none';
         loginModal.style.display = 'flex';
     });
@@ -492,7 +336,7 @@
         location.reload();
     });
 
-    // ===================== FINGERPRINT (динамическая загрузка с нескольких CDN) =====================
+    // ===== FINGERPRINT (dynamic loading) =====
     let cachedFingerprint = null;
 
     const FP_CDN_SOURCES = [
@@ -521,24 +365,24 @@
         }
         for (const src of FP_CDN_SOURCES) {
             try {
-                console.log(`⏳ Пробуем загрузить FingerprintJS с ${src}...`);
+                console.log(`⏳ Trying to load FingerprintJS from ${src}...`);
                 await loadScript(src);
                 if (typeof FingerprintJS !== 'undefined' || typeof Fingerprint2 !== 'undefined') {
-                    console.log(`✅ FingerprintJS загружен с ${src}`);
+                    console.log(`✅ FingerprintJS loaded from ${src}`);
                     return true;
                 }
             } catch (e) {
-                console.warn(`⚠️ Не удалось загрузить с ${src}:`, e);
+                console.warn(`⚠️ Failed to load from ${src}:`, e);
             }
         }
-        console.warn('❌ Не удалось загрузить FingerprintJS ни с одного источника.');
+        console.warn('❌ Could not load FingerprintJS from any source.');
         return false;
     }
 
     function generateFallbackFingerprint() {
         const stored = localStorage.getItem('device_fp');
         if (stored) {
-            console.log('ℹ️ Используем сохранённый fallback fingerprint:', stored);
+            console.log('ℹ️ Using stored fallback fingerprint:', stored);
             return stored;
         }
         const components = [];
@@ -579,7 +423,7 @@
         }
         const fp = 'fp_' + Math.abs(hash).toString(16).padStart(8, '0');
         localStorage.setItem('device_fp', fp);
-        console.log('⚠️ Сгенерирован fallback fingerprint:', fp);
+        console.log('⚠️ Generated fallback fingerprint:', fp);
         return fp;
     }
 
@@ -607,11 +451,11 @@
                 }
                 if (visitorId) {
                     cachedFingerprint = visitorId;
-                    console.log('✅ Fingerprint (успешно):', visitorId);
+                    console.log('✅ Fingerprint (success):', visitorId);
                     return visitorId;
                 }
             } catch (error) {
-                //console.error('❌ Ошибка получения fingerprint:', error);
+                console.error('❌ Error getting fingerprint:', error);
             }
         }
 
@@ -620,8 +464,7 @@
         return fallback;
     }
 
-    // ===================== АВАТАРКИ =====================
-
+    // ===== AVATARS =====
     const avatarInput = document.getElementById('avatarInput');
     const uploadAvatarBtn = document.getElementById('uploadAvatarBtn');
     const removeAvatarBtn = document.getElementById('removeAvatarBtn');
@@ -631,50 +474,29 @@
     const avatarCache = new Map();
 
     async function fetchUserAvatar(userId) {
-        if (!userId) {
-            console.warn('fetchUserAvatar: userId не передан');
-            return null;
-        }
-        if (avatarCache.has(userId)) {
-            console.log(`fetchUserAvatar: кеш для ${userId} ->`, avatarCache.get(userId));
-            return avatarCache.get(userId);
-        }
+        if (!userId) return null;
+        if (avatarCache.has(userId)) return avatarCache.get(userId);
         try {
-            console.log(`fetchUserAvatar: запрос профиля для ${userId}`);
             let { data, error } = await supabaseClient
                 .from('profiles')
                 .select('avatar_url')
                 .eq('id', userId)
                 .maybeSingle();
-
             if (error && error.code === 'PGRST116') {
-                console.log(`fetchUserAvatar: профиль для ${userId} не найден, создаём...`);
-                const { error: insertError } = await supabaseClient
-                    .from('profiles')
-                    .insert([{ id: userId, avatar_url: null }]);
-                if (insertError) {
-                    //console.error('fetchUserAvatar: ошибка создания профиля:', insertError);
-                    avatarCache.set(userId, null);
-                    return null;
-                }
-                const { data: newData, error: newError } = await supabaseClient
+                await supabaseClient.from('profiles').insert([{ id: userId, avatar_url: null }]);
+                const { data: newData } = await supabaseClient
                     .from('profiles')
                     .select('avatar_url')
                     .eq('id', userId)
                     .maybeSingle();
-                if (newError) throw newError;
                 data = newData;
-                console.log(`fetchUserAvatar: профиль создан, avatar_url =`, data?.avatar_url);
             } else if (error) {
                 throw error;
             }
-
             const url = data?.avatar_url || null;
             avatarCache.set(userId, url);
-            console.log(`fetchUserAvatar: для ${userId} получен URL:`, url);
             return url;
         } catch (e) {
-            //console.error('fetchUserAvatar: исключение:', e.message);
             avatarCache.set(userId, null);
             return null;
         }
@@ -684,11 +506,7 @@
         if (!userId) return;
         try {
             const url = await fetchUserAvatar(userId);
-            if (url) {
-                avatarPreview.innerHTML = `<img src="${url}?t=${Date.now()}" style="width: 100%; height: 100%; object-fit: cover;">`;
-            } else {
-                avatarPreview.innerHTML = '👤';
-            }
+            avatarPreview.innerHTML = url ? `<img src="${url}?t=${Date.now()}" style="width:100%;height:100%;object-fit:cover;">` : '👤';
         } catch (e) {
             avatarPreview.innerHTML = '👤';
         }
@@ -714,9 +532,7 @@
                     ctx.imageSmoothingEnabled = true;
                     ctx.imageSmoothingQuality = 'high';
                     ctx.drawImage(img, 0, 0, width, height);
-                    canvas.toBlob((blob) => {
-                        resolve(blob);
-                    }, 'image/png', quality);
+                    canvas.toBlob((blob) => resolve(blob), 'image/png', quality);
                 };
                 img.onerror = function() { resolve(null); };
                 img.src = e.target.result;
@@ -728,7 +544,7 @@
 
     uploadAvatarBtn.addEventListener('click', () => {
         if (!currentUser) {
-            showError('Account', 'First, log in to your account.');
+            showError('Account', 'Please log in to your account first.');
             return;
         }
         avatarInput.click();
@@ -737,79 +553,59 @@
     avatarInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
         if (file.size > 1024 * 1024) {
-            avatarStatus.textContent = '❌ Файл превышает 1 МБ';
+            avatarStatus.textContent = '❌ File exceeds 1 MB';
             avatarStatus.style.color = 'red';
             avatarInput.value = '';
             return;
         }
-
-        avatarStatus.textContent = '⏳ Обработка...';
+        avatarStatus.textContent = '⏳ Processing...';
         avatarStatus.style.color = '#666';
 
         try {
             const resizedBlob = await resizeImage(file, 128, 128, 0.85);
             if (!resizedBlob) {
-                avatarStatus.textContent = '❌ Ошибка обработки изображения';
+                avatarStatus.textContent = '❌ Image processing failed';
                 avatarStatus.style.color = 'red';
                 avatarInput.value = '';
                 return;
             }
-
             if (resizedBlob.size > 1024 * 1024) {
-                avatarStatus.textContent = '❌ После сжатия файл всё ещё больше 1 МБ';
+                avatarStatus.textContent = '❌ File still exceeds 1 MB after compression';
                 avatarStatus.style.color = 'red';
                 avatarInput.value = '';
                 return;
             }
-
             const fileName = `${currentUser.id}/${Date.now()}.png`;
             const { error: uploadError } = await supabaseClient.storage
                 .from('avatars')
-                .upload(fileName, resizedBlob, {
-                    contentType: 'image/png',
-                    upsert: true
-                });
-
+                .upload(fileName, resizedBlob, { contentType: 'image/png', upsert: true });
             if (uploadError) {
-                //console.error('Ошибка загрузки в Storage:', uploadError);
-                avatarStatus.textContent = '❌ Ошибка загрузки: ' + uploadError.message;
+                avatarStatus.textContent = '❌ Upload error: ' + uploadError.message;
                 avatarStatus.style.color = 'red';
                 avatarInput.value = '';
                 return;
             }
-
-            const { data: urlData } = supabaseClient.storage
-                .from('avatars')
-                .getPublicUrl(fileName);
-
+            const { data: urlData } = supabaseClient.storage.from('avatars').getPublicUrl(fileName);
             const avatarUrl = urlData.publicUrl;
-
             const { error: updateError } = await supabaseClient
                 .from('profiles')
                 .upsert({ id: currentUser.id, avatar_url: avatarUrl, updated_at: new Date().toISOString() });
-
             if (updateError) {
-                //console.error('Ошибка обновления профиля:', updateError);
-                avatarStatus.textContent = '❌ Ошибка сохранения: ' + updateError.message;
+                avatarStatus.textContent = '❌ Save error: ' + updateError.message;
                 avatarStatus.style.color = 'red';
                 avatarInput.value = '';
                 return;
             }
-
             avatarCache.set(currentUser.id, avatarUrl);
-            avatarPreview.innerHTML = `<img src="${avatarUrl}?t=${Date.now()}" style="width: 100%; height: 100%; object-fit: cover;">`;
-            avatarStatus.textContent = '✅ Аватарка обновлена!';
+            avatarPreview.innerHTML = `<img src="${avatarUrl}?t=${Date.now()}" style="width:100%;height:100%;object-fit:cover;">`;
+            avatarStatus.textContent = '✅ Avatar updated!';
             avatarStatus.style.color = 'green';
             avatarInput.value = '';
-
             await loadGuestbook(guestbookCurrentPage);
             await loadPaintings();
-
         } catch (err) {
-            //console.error('Ошибка:', err);
-            avatarStatus.textContent = '❌ Ошибка: ' + err.message;
+            avatarStatus.textContent = '❌ Error: ' + err.message;
             avatarStatus.style.color = 'red';
             avatarInput.value = '';
         }
@@ -817,11 +613,10 @@
 
     removeAvatarBtn.addEventListener('click', async () => {
         if (!currentUser) {
-            showError('Account', 'First, log in to your account.');
+            showError('Account', 'Please log in to your account first.');
             return;
         }
-        if (!confirm('Удалить аватарку?')) return;
-
+        if (!confirm('Delete avatar?')) return;
         try {
             const { data, error } = await supabaseClient
                 .from('profiles')
@@ -829,39 +624,29 @@
                 .eq('id', currentUser.id)
                 .maybeSingle();
             if (error) throw error;
-
             if (data && data.avatar_url) {
                 const path = data.avatar_url.split('/').pop();
                 if (path) {
-                    await supabaseClient.storage
-                        .from('avatars')
-                        .remove([`${currentUser.id}/${path}`]);
+                    await supabaseClient.storage.from('avatars').remove([`${currentUser.id}/${path}`]);
                 }
             }
-
-            const { error: updateError } = await supabaseClient
+            await supabaseClient
                 .from('profiles')
                 .update({ avatar_url: null, updated_at: new Date().toISOString() })
                 .eq('id', currentUser.id);
-
-            if (updateError) throw updateError;
-
             avatarCache.delete(currentUser.id);
             avatarPreview.innerHTML = '👤';
-            avatarStatus.textContent = '✅ Аватарка удалена';
+            avatarStatus.textContent = '✅ Avatar removed';
             avatarStatus.style.color = 'green';
-
             await loadGuestbook(guestbookCurrentPage);
             await loadPaintings();
-
         } catch (err) {
-            //console.error('Ошибка удаления:', err);
-            avatarStatus.textContent = '❌ Ошибка: ' + err.message;
+            avatarStatus.textContent = '❌ Error: ' + err.message;
             avatarStatus.style.color = 'red';
         }
     });
 
-    // === Получение IP ===
+    // ===== GET CLIENT IP =====
     async function getClientIP() {
         try {
             const response = await fetch('https://api.ipify.org?format=json');
@@ -872,53 +657,48 @@
         }
     }
 
-    // === ПРОВЕРКА VPN/ПРОКСИ ===
-    // === ПРОВЕРКА VPN (IPPriv — без ключа, 100 запросов/час) ===
+    // ===== VPN BLOCK (IPPriv + ipapi.is, no keys) =====
+    let isBlocked = false;
+
     async function isVPN(ip) {
         if (!ip || ip === '0.0.0.0' || ip === '127.0.0.1' || ip === '::1') return false;
 
         const cached = sessionStorage.getItem('vpn_check_' + ip);
         if (cached !== null) return cached === 'true';
 
-        // 1. Сначала пробуем IPPriv (быстрый и точный)
+        // 1. IPPriv
         try {
             const response = await fetch(`https://api.ippriv.com/api/security/${ip}`);
             if (response.ok) {
                 const data = await response.json();
-                // Проверяем флаги: isVPN, isProxy, isTor (и isHosting тоже можно, но обычно не блокируем хостеров)
-                //const isBad = data.isVPN === true || data.isProxy === true || data.isTor === true;
-                const isBad = data.isVPN === true || data.isProxy === true;
-                if (isBad) {
+                if (data.isVPN === true || data.isProxy === true || data.isTor === true) {
                     sessionStorage.setItem('vpn_check_' + ip, 'true');
                     return true;
                 }
             }
         } catch (e) { /* ignore */ }
 
-        // 2. Если IPPriv не ответил или не нашёл, пробуем ipapi.is
+        // 2. ipapi.is
         try {
             const response = await fetch(`https://ipapi.is/${ip}`);
             if (response.ok) {
                 const data = await response.json();
-                const isBad = data.is_vpn === true || data.is_proxy === true;
-                //const isBad = data.is_vpn === true || data.is_proxy === true || data.is_abuser === true;
-                if (isBad) {
+                if (data.is_vpn === true || data.is_proxy === true || data.is_abuser === true) {
                     sessionStorage.setItem('vpn_check_' + ip, 'true');
                     return true;
                 }
             }
         } catch (e) { /* ignore */ }
 
-        // Если оба не сработали, считаем безопасным
         sessionStorage.setItem('vpn_check_' + ip, 'false');
         return false;
     }
 
-    // === БЛОКИРОВКА ДОСТУПА ===
-    function showBlockedScreen() {
-        // Удаляем всё содержимое страницы и показываем блокировку
-        document.body.innerHTML = `
-            <div style="
+    function showBlockedScreen(ip) {
+        if (document.getElementById('vpnBlockScreen')) return;
+        isBlocked = true;
+        const blockHtml = `
+            <div id="vpnBlockScreen" style="
                 position: fixed;
                 top: 0;
                 left: 0;
@@ -934,6 +714,8 @@
                 z-index: 999999;
                 padding: 20px;
                 text-align: center;
+                user-select: none;
+                -webkit-user-select: none;
             ">
                 <div style="
                     background: #d4d0c8;
@@ -944,11 +726,13 @@
                     max-width: 500px;
                     box-shadow: 8px 8px 0px rgba(0,0,0,0.5);
                 ">
-                    <div style="font-size: 48px; margin-bottom: 10px;">🚫</div>
-                    <h2 style="color: #000; margin-bottom: 10px;">Access denied</h2>
+                    <div style="font-size: 48px; margin-bottom: 10px;">
+                        <img src="materialsl/nope.gif" alt="Access Denied" class="nope-gif" style="width: 64px; height: 64px; display: block; margin: 0 auto;">
+                    </div>
+                    <h2 style="color: #000; margin-bottom: 10px;">Access Denied</h2>
                     <p style="color: #333; font-size: 16px; line-height: 1.5;">
                         Your IP address has been identified as <strong>VPN or proxy</strong>.<br>
-                        To access the site, disable your VPN and refresh the page.
+                        Please disable your VPN and refresh the page.
                     </p>
                     <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
                         <button onclick="location.reload()" style="
@@ -961,20 +745,52 @@
                             font-family: inherit;
                             font-size: 16px;
                             cursor: default;
-                        ">Refresh the page</button>
+                        ">Refresh Page</button>
                     </div>
                     <div style="margin-top: 15px; font-size: 12px; color: #666;">
-                        Your IP: <span id="blocked-ip"></span>
+                        Your IP: <span id="blocked-ip">${ip || 'unknown'}</span>
                     </div>
                 </div>
             </div>
         `;
-        document.getElementById('blocked-ip').textContent = ip;
-        // Отключаем все скрипты и взаимодействие
+        document.body.innerHTML = blockHtml;
         document.body.style.pointerEvents = 'auto';
+        document.body.style.overflow = 'hidden';
+        sessionStorage.setItem('vpn_blocked', 'true');
+        protectBlockScreen();
     }
 
-    // === Проверка бана IP ===
+    function protectBlockScreen() {
+        const targetNode = document.getElementById('vpnBlockScreen');
+        if (!targetNode) return;
+        const observer = new MutationObserver(() => {
+            if (!document.getElementById('vpnBlockScreen')) location.reload();
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        const attrObserver = new MutationObserver(() => {
+            const block = document.getElementById('vpnBlockScreen');
+            if (block) {
+                if (block.style.display === 'none') block.style.display = 'flex';
+                if (block.style.visibility === 'hidden') block.style.visibility = 'visible';
+                if (block.style.opacity === '0') block.style.opacity = '1';
+            }
+        });
+        attrObserver.observe(targetNode, { attributes: true, attributeFilter: ['style', 'class'] });
+        setInterval(() => {
+            const block = document.getElementById('vpnBlockScreen');
+            if (!block) { location.reload(); }
+            else {
+                if (block.style.display === 'none' || block.style.visibility === 'hidden' || block.style.opacity === '0') {
+                    block.style.display = 'flex';
+                    block.style.visibility = 'visible';
+                    block.style.opacity = '1';
+                }
+            }
+        }, 500);
+        window._blockObservers = { observer, attrObserver };
+    }
+
+    // ===== BANS (IP, fingerprint, users) =====
     async function isIPBanned(ip) {
         if (ip === '0.0.0.0') return false;
         const { data, error } = await supabaseClient
@@ -986,7 +802,6 @@
         return !!data;
     }
 
-    // === Проверка бана fingerprint ===
     async function isFingerprintBanned(fingerprint) {
         if (!fingerprint) return false;
         try {
@@ -1000,8 +815,7 @@
         } catch(e) { return false; }
     }
 
-    // === Бан fingerprint ===
-    async function banFingerprint(fingerprint, reason = 'Забанен по отпечатку') {
+    async function banFingerprint(fingerprint, reason = 'Banned by fingerprint') {
         if (!fingerprint) return;
         if (await isFingerprintBanned(fingerprint)) {
             showError('System', 'This fingerprint is already blacklisted.');
@@ -1017,7 +831,6 @@
         }
     }
 
-    // ===================== БАН ПОЛЬЗОВАТЕЛЕЙ =====================
     async function isUserBanned(userId) {
         if (!userId) return false;
         try {
@@ -1027,28 +840,26 @@
                 .eq('user_id', userId)
                 .maybeSingle();
             if (error) {
-                console.error('Ошибка проверки бана пользователя:', error);
+                console.error('Error checking user ban:', error);
                 return false;
             }
             return !!data;
-        } catch (e) {
-            return false;
-        }
+        } catch (e) { return false; }
     }
 
-    async function banUser(userId, reason = 'Забанен администратором') {
+    async function banUser(userId, reason = 'Banned by administrator') {
         if (!userId) return;
         if (await isUserBanned(userId)) {
-            showError('Бан пользователя', 'Этот пользователь уже забанен.');
+            showError('User Ban', 'This user is already banned.');
             return;
         }
         const { error } = await supabaseClient
             .from('banned_users')
             .insert([{ user_id: userId, reason }]);
         if (error) {
-            showError('Бан пользователя', 'Не удалось забанить пользователя: ' + error.message);
+            showError('User Ban', 'Failed to ban user: ' + error.message);
         } else {
-            showError('Бан пользователя', 'Пользователь успешно забанен!');
+            showError('User Ban', 'User successfully banned!');
         }
     }
 
@@ -1059,29 +870,45 @@
             .delete()
             .eq('user_id', userId);
         if (error) {
-            showError('Разбан пользователя', 'Не удалось разбанить пользователя: ' + error.message);
+            showError('User Unban', 'Failed to unban user: ' + error.message);
         } else {
-            showError('Разбан пользователя', 'Пользователь разбанен.');
+            showError('User Unban', 'User unbanned.');
         }
     }
 
-    // === Проверка спам-лимитов + бан ===
+    // ===== CLEAN OLD RECORDS =====
+    async function cleanOldRecords() {
+        try {
+            const now = new Date();
+            const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            await supabaseClient
+                .from('guestbook')
+                .delete()
+                .lt('date', monthAgo.toISOString());
+            await supabaseClient
+                .from('paintings')
+                .delete()
+                .lt('created_at', monthAgo.toISOString());
+            console.log('🧹 Old records cleaned');
+        } catch (e) {
+            console.warn('Cleaning old records failed:', e);
+        }
+    }
+
+    // ===== SPAM LIMITS CHECK =====
     async function checkSpamLimits(table, user, ip, fingerprint, messageOrImageHash) {
-        // === БАНЫ ===
         if (user && user.id && (await isUserBanned(user.id))) {
-            return { allowed: false, reason: 'Ваш аккаунт забанен.' };
+            return { allowed: false, reason: 'Your account is banned.' };
         }
         if (fingerprint && (await isFingerprintBanned(fingerprint))) {
-            return { allowed: false, reason: 'Ваше устройство забанено.' };
+            return { allowed: false, reason: 'Your device is banned.' };
         }
         if (await isIPBanned(ip)) {
-            return { allowed: false, reason: 'Ваш IP забанен.' };
+            return { allowed: false, reason: 'Your IP is banned.' };
         }
 
         const now = new Date();
         const isLoggedIn = user && user.id;
-
-        // === ЛИМИТЫ ПО FINGERPRINT (для гостей) ===
         let idField, idValue;
         if (isLoggedIn) {
             idField = 'user_id';
@@ -1096,7 +923,6 @@
         const startTime = new Date(now.getTime() - timeWindow);
         const dateField = (table === 'guestbook') ? 'date' : 'created_at';
 
-        // Проверяем количество записей
         const { count, error } = await supabaseClient
             .from(table)
             .select('*', { count: 'exact', head: true })
@@ -1104,29 +930,26 @@
             .gte(dateField, startTime.toISOString());
 
         if (error) {
-            console.error('Ошибка подсчёта лимитов:', error);
-            return { allowed: false, reason: 'Ошибка проверки лимитов' };
+            console.error('Error counting limits:', error);
+            return { allowed: false, reason: 'Limit check error' };
         }
 
-        // Если лимит превышен
         if (count >= limit) {
-            const noun = table === 'guestbook' ? 'сообщений' : 'рисунков';
-            const period = isLoggedIn ? 'час' : 'день';
-
-            // === АВТО-БАН IP при 3-кратном превышении (спам) ===
+            const noun = table === 'guestbook' ? 'messages' : 'paintings';
+            const period = isLoggedIn ? 'hour' : 'day';
             if (!isLoggedIn && count >= limit * 3) {
-                // Баним IP на сутки
-                await supabaseClient
-                    .from('banned_ips')
-                    .insert([{ ip_address: ip, reason: 'Автоматический бан за спам' }]);
-                console.log(`🚫 IP ${ip} автоматически забанен за спам (${count} записей)`);
-                return { allowed: false, reason: 'Ваш IP забанен за спам.' };
+                const alreadyBanned = await isIPBanned(ip);
+                if (!alreadyBanned) {
+                    await supabaseClient
+                        .from('banned_ips')
+                        .insert([{ ip_address: ip, reason: 'Auto-ban for spam' }]);
+                    console.log(`🚫 IP ${ip} auto-banned for spam (${count} entries)`);
+                }
+                return { allowed: false, reason: 'Your IP has been banned for spam.' };
             }
-
-            return { allowed: false, reason: `Вы исчерпали лимит (${count}/${limit}) ${noun} за ${period}.` };
+            return { allowed: false, reason: `You have reached the limit (${count}/${limit}) ${noun} per ${period}.` };
         }
 
-        // === ЗАЩИТА ОТ ДУБЛИКАТОВ (для гостей) ===
         if (table === 'guestbook' && messageOrImageHash && !isLoggedIn) {
             const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
             const { count: dupCount, error: dupError } = await supabaseClient
@@ -1136,31 +959,45 @@
                 .eq('message', messageOrImageHash)
                 .gte(dateField, fiveMinutesAgo.toISOString());
             if (!dupError && dupCount > 0) {
-                return { allowed: false, reason: 'Вы уже отправляли такое сообщение недавно. Подождите 5 минут.' };
+                return { allowed: false, reason: 'You already sent this message recently. Please wait 5 minutes.' };
             }
         }
 
         return { allowed: true };
     }
 
-    async function cleanOldRecords() {
-        const now = new Date();
-        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-        // Удаляем сообщения старше 30 дней
-        await supabaseClient
-            .from('guestbook')
-            .delete()
-            .lt('date', monthAgo.toISOString());
-
-        // Удаляем рисунки старше 30 дней
-        await supabaseClient
-            .from('paintings')
-            .delete()
-            .lt('created_at', monthAgo.toISOString());
+    // ===== HELPER FUNCTIONS =====
+    function escapeHtml(unsafe) {
+        return unsafe.replace(/[&<>"']/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            if (m === '"') return '&quot;';
+            if (m === "'") return '&#039;';
+            return m;
+        });
     }
 
-    // ============== ГОСТЕВАЯ КНИГА ==============
+    function triggerErrorEffect() {
+        playChordSound();
+        win95Window.classList.add('error-effect');
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.backgroundColor = 'rgba(255,0,0,0.3)';
+        overlay.style.zIndex = '1500';
+        overlay.style.pointerEvents = 'none';
+        document.body.appendChild(overlay);
+        setTimeout(() => {
+            win95Window.classList.remove('error-effect');
+            overlay.remove();
+        }, 300);
+    }
+
+    // ===== GUESTBOOK =====
     const gbName = document.getElementById('gbName');
     const gbMessage = document.getElementById('gbMessage');
     const gbSend = document.getElementById('gbSend');
@@ -1174,7 +1011,7 @@
     const guestbookNextBtn = document.getElementById('guestbookNextPageBtn');
     const guestbookPageIndicator = document.getElementById('guestbookPageIndicator');
 
-    // === Каптча ===
+    // === CAPTCHA ===
     const captchaOverlay = document.getElementById('captchaOverlay');
     const captchaModal = document.getElementById('captchaModal');
     const captchaQuestion = document.getElementById('captchaQuestion');
@@ -1224,31 +1061,13 @@
         setTimeout(() => captchaModal.classList.remove('shake-modal'), 300);
     }
 
-    function triggerErrorEffect() {
-        playChordSound();
-        win95Window.classList.add('error-effect');
-        const overlay = document.createElement('div');
-        overlay.style.position = 'fixed';
-        overlay.style.top = '0';
-        overlay.style.left = '0';
-        overlay.style.width = '100%';
-        overlay.style.height = '100%';
-        overlay.style.backgroundColor = 'rgba(255,0,0,0.3)';
-        overlay.style.zIndex = '1500';
-        overlay.style.pointerEvents = 'none';
-        document.body.appendChild(overlay);
-        setTimeout(() => {
-            win95Window.classList.remove('error-effect');
-            overlay.remove();
-        }, 300);
-    }
-
     captchaOk.addEventListener('click', () => {
         const answer = parseInt(captchaAnswer.value.trim(), 10);
         if (isNaN(answer) || answer !== captchaResult) {
             triggerErrorEffect();
             shakeModal();
             captchaAnswer.classList.add('error');
+            showError('Captcha Check', 'Wrong answer. Please try again.');
             generateCaptcha();
             return;
         }
@@ -1262,9 +1081,16 @@
         if (e.target === captchaOverlay) closeCaptcha();
     });
 
-    // === Загрузка сообщений ===
+    // === Load messages (with indicator) ===
     async function loadGuestbook(page = guestbookCurrentPage) {
-        gbMessages.innerHTML = '';
+        // Show loading indicator
+        gbMessages.innerHTML = `
+            <div style="text-align:center;padding:20px;">
+                <img src="materialsl/loading.gif" alt="Loading..." class="loading-gif" style="width: 48px; height: 48px; display: block; margin: 0 auto;">
+                <div style="margin-top:10px; color: #000;">Loading messages...</div>
+            </div>
+        `;
+
         const offset = page * guestbookPageSize;
         try {
             const { data, count, error } = await supabaseClient
@@ -1274,8 +1100,8 @@
                 .range(offset, offset + guestbookPageSize - 1);
 
             if (error) {
-                //console.error('Ошибка загрузки guestbook:', error);
-                gbMessages.innerHTML = '<p style="color: red;">Failed to load messages: ' + error.message + '</p>';
+                showError('Load Messages', 'Failed to load messages: ' + error.message);
+                gbMessages.innerHTML = '<p style="color: red;">Error loading messages</p>';
                 return;
             }
 
@@ -1285,8 +1111,8 @@
             updateGuestbookPagination();
             await renderMessages(data || []);
         } catch (e) {
-            //console.error('Исключение в loadGuestbook:', e);
-            gbMessages.innerHTML = '<p style="color: red;">Ошибка загрузки сообщений</p>';
+            showError('Load Messages', 'An error occurred while loading.');
+            gbMessages.innerHTML = '<p style="color: red;">Error loading messages</p>';
         }
     }
 
@@ -1298,23 +1124,18 @@
         }
     }
 
-    // === Отрисовка сообщений с аватарками ===
+    // === Render messages ===
     async function renderMessages(messages) {
         gbMessages.innerHTML = '';
         if (!messages || messages.length === 0) {
-            gbMessages.innerHTML = '<p style="color: #808080;">No messages yet. Be the first!</p>';
+            gbMessages.innerHTML = '<p style="color: #ffffff;">No messages yet. Be the first!</p>';
             return;
         }
 
-        console.log(`📝 Рендерим ${messages.length} сообщений`);
-
         const avatarPromises = messages.map(async (msg) => {
             if (msg.user_id) {
-                console.log(`renderMessages: загружаем аватарку для user_id=${msg.user_id}, сообщение ID=${msg.id}`);
                 const url = await fetchUserAvatar(msg.user_id);
                 return { msgId: msg.id, avatarUrl: url };
-            } else {
-                console.log(`renderMessages: сообщение ${msg.id} не имеет user_id, аватарка не будет показана`);
             }
             return null;
         });
@@ -1324,15 +1145,15 @@
             if (item) avatarMap[item.msgId] = item.avatarUrl;
         });
 
+        const fragment = document.createDocumentFragment();
         messages.forEach(msg => {
             const msgDiv = document.createElement('div');
-            msgDiv.style.border = '2px solid #808080';
+            msgDiv.style.border = '2px solid #ffffff';
             msgDiv.style.borderRightColor = '#ffffff';
             msgDiv.style.borderBottomColor = '#ffffff';
             msgDiv.style.padding = '8px';
             msgDiv.style.marginBottom = '10px';
             msgDiv.style.backgroundColor = '#d4d0c8';
-            msgDiv.style.position = 'relative';
             msgDiv.style.display = 'flex';
             msgDiv.style.gap = '10px';
             msgDiv.style.alignItems = 'flex-start';
@@ -1340,7 +1161,7 @@
             const avatarDiv = document.createElement('div');
             avatarDiv.style.width = '48px';
             avatarDiv.style.height = '48px';
-            avatarDiv.style.border = '2px solid #808080';
+            avatarDiv.style.border = '2px solid #ffffff';
             avatarDiv.style.borderTopColor = '#ffffff';
             avatarDiv.style.borderLeftColor = '#ffffff';
             avatarDiv.style.background = '#d4d0c8';
@@ -1353,8 +1174,7 @@
 
             const avatarUrl = avatarMap[msg.id];
             if (avatarUrl) {
-                console.log(`renderMessages: сообщение ${msg.id} получило аватарку`);
-                avatarDiv.innerHTML = `<img src="${avatarUrl}?t=${Date.now()}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                avatarDiv.innerHTML = `<img src="${avatarUrl}?t=${Date.now()}" style="width:100%;height:100%;object-fit:cover;">`;
             } else {
                 avatarDiv.textContent = '👤';
             }
@@ -1362,46 +1182,40 @@
             const contentDiv = document.createElement('div');
             contentDiv.style.flex = '1';
             contentDiv.style.minWidth = '0';
-
             const date = msg.date ? new Date(msg.date).toLocaleString() : 'Unknown date';
             contentDiv.innerHTML = `
-                <div style="font-weight: bold; color: #ffffff">${escapeHtml(msg.name)}</div>
-                <div style="font-size: 11px; color: #a7a7a7;">${date}</div>
-                <div style="margin-top: 5px; white-space: pre-wrap; color: #ffffff">${escapeHtml(msg.message)}</div>
+                <div style="font-weight: bold;">${escapeHtml(msg.name)}</div>
+                <div style="font-size: 11px; color: #ffffff;">${date}</div>
+                <div style="margin-top: 5px; white-space: pre-wrap;">${escapeHtml(msg.message)}</div>
             `;
 
             msgDiv.appendChild(avatarDiv);
             msgDiv.appendChild(contentDiv);
-            gbMessages.appendChild(msgDiv);
+            fragment.appendChild(msgDiv);
         });
+        gbMessages.appendChild(fragment);
     }
 
-    function escapeHtml(unsafe) {
-        return unsafe.replace(/[&<>"']/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            if (m === '"') return '&quot;';
-            if (m === "'") return '&#039;';
-            return m;
-        });
-    }
+    // === Send message ===
+    const MAX_MESSAGE_LENGTH = 500;
+    const MAX_NAME_LENGTH = 50;
 
-    // === Отправка сообщения ===
     async function performSendGuestbook(data) {
         const { name, message, ip, fingerprint } = data;
         const user = currentUser;
 
+        if (message.length > MAX_MESSAGE_LENGTH) {
+            showError('Send Message', `Message must not exceed ${MAX_MESSAGE_LENGTH} characters.`);
+            return;
+        }
+        if (name.length > MAX_NAME_LENGTH) {
+            showError('Send Message', `Name must not exceed ${MAX_NAME_LENGTH} characters.`);
+            return;
+        }
+
         const spamCheck = await checkSpamLimits('guestbook', user, ip, fingerprint, message);
         if (!spamCheck.allowed) {
-            triggerErrorEffect();
-            const errorDiv = document.createElement('div');
-            errorDiv.style.color = '#ff0000';
-            errorDiv.style.border = '2px solid #ff0000';
-            errorDiv.style.padding = '8px';
-            errorDiv.style.marginBottom = '10px';
-            errorDiv.textContent = spamCheck.reason;
-            gbMessages.prepend(errorDiv);
+            showError('Send Message', spamCheck.reason);
             return;
         }
 
@@ -1414,15 +1228,7 @@
         try {
             const { error } = await supabaseClient.from('guestbook').insert([insertData]);
             if (error) {
-                //console.error('Ошибка вставки сообщения:', error);
-                triggerErrorEffect();
-                const errorDiv = document.createElement('div');
-                errorDiv.style.color = '#ff0000';
-                errorDiv.style.border = '2px solid #ff0000';
-                errorDiv.style.padding = '8px';
-                errorDiv.style.marginBottom = '10px';
-                errorDiv.textContent = 'Ошибка отправки: ' + error.message;
-                gbMessages.prepend(errorDiv);
+                showError('Send Message', 'Failed to send message: ' + error.message);
                 return;
             }
             gbName.value = '';
@@ -1431,8 +1237,7 @@
             await loadGuestbook(0);
             playChimesSound();
         } catch (e) {
-            //console.error('Исключение при отправке:', e);
-            triggerErrorEffect();
+            showError('Send Message', 'An error occurred while sending.');
         }
     }
 
@@ -1441,33 +1246,31 @@
         const name = gbName.value.trim();
         const message = gbMessage.value.trim();
         if (!name || !message) {
-            showError('Send message', 'Please fill in your name and message.');
+            showError('Send Message', 'Please fill in both name and message.');
             return;
         }
-        // === ОГРАНИЧЕНИЕ ДЛИНЫ СООБЩЕНИЯ ===
-        const MAX_MESSAGE_LENGTH = 500; // можно изменить
-        if (message.length > MAX_MESSAGE_LENGTH) {
-            showError('Send message', `The message must not exceed ${MAX_MESSAGE_LENGTH} characters. Current: ${message.length}.`);
-            return;
-        }
-        const MAX_NAME_LENGTH = 50;
         if (name.length > MAX_NAME_LENGTH) {
-            showError('Send message', `The name must not exceed ${MAX_NAME_LENGTH} characters.`);
+            showError('Send Message', `Name must not exceed ${MAX_NAME_LENGTH} characters.`);
             return;
         }
+        if (message.length > MAX_MESSAGE_LENGTH) {
+            showError('Send Message', `Message must not exceed ${MAX_MESSAGE_LENGTH} characters. Current: ${message.length}.`);
+            return;
+        }
+
         const ip = await getClientIP();
         const fingerprint = await getFingerprint();
 
         const spamCheck = await checkSpamLimits('guestbook', currentUser, ip, fingerprint, message);
         if (!spamCheck.allowed) {
-            showError('Send message', spamCheck.reason);
+            showError('Send Message', spamCheck.reason);
             return;
         }
 
         openCaptcha(performSendGuestbook, { name, message, ip, fingerprint });
     });
 
-    // ============== ПРОЕКТЫ И ДРУЗЬЯ ==============
+    // ===== PROJECTS & FRIENDS =====
     async function loadProjects() {
         const container = document.getElementById('projects-container');
         let projects = [];
@@ -1512,7 +1315,7 @@
     loadProjects();
     loadFriends();
 
-    // ============== PAINT ==============
+    // ===== PAINT =====
     const mainCanvas = document.getElementById('mainCanvas');
     const overlayCanvas = document.getElementById('overlayCanvas');
     const ctx = mainCanvas.getContext('2d');
@@ -1718,7 +1521,7 @@
             updateSlidersFromColor(hex);
             updateValues();
         } else {
-            triggerErrorEffect();
+            showError('Color Select', 'Invalid HEX code. Use format #RRGGBB.');
         }
     });
 
@@ -1831,15 +1634,14 @@
         return true;
     }
 
-    // === Сохранение рисунка ===
+    // === Save painting ===
     async function performSavePainting(data) {
         const { imageData, ip, fingerprint } = data;
         const user = currentUser;
 
         const spamCheck = await checkSpamLimits('paintings', user, ip, fingerprint, null);
         if (!spamCheck.allowed) {
-            triggerErrorEffect();
-            showError('System', spamCheck.reason);
+            showError('Save Painting', spamCheck.reason);
             return;
         }
 
@@ -1852,29 +1654,28 @@
         try {
             const { error } = await supabaseClient.from('paintings').insert([insertData]);
             if (error) {
-                //console.error('Ошибка сохранения рисунка:', error);
-                triggerErrorEffect();
-                showError('Painter','Save error: ' + error.message);
+                showError('Save Painting', 'Failed to save painting: ' + error.message);
                 return;
             }
             playChimesSound();
             loadPaintings();
         } catch (e) {
-            //console.error('Исключение при сохранении рисунка:', e);
-            triggerErrorEffect();
+            showError('Save Painting', 'An error occurred while saving.');
         }
     }
 
     saveBtn.addEventListener('click', async (e) => {
         e.preventDefault();
-        if (isCanvasBlank()) { triggerErrorEffect(); return; }
+        if (isCanvasBlank()) {
+            showError('Save Painting', 'Canvas is empty. Draw something before saving.');
+            return;
+        }
         const ip = await getClientIP();
         const fingerprint = await getFingerprint();
 
         const spamCheck = await checkSpamLimits('paintings', currentUser, ip, fingerprint, null);
         if (!spamCheck.allowed) {
-            triggerErrorEffect();
-            showError('System', spamCheck.reason);
+            showError('Save Painting', spamCheck.reason);
             return;
         }
 
@@ -1882,7 +1683,7 @@
         openCaptcha(performSavePainting, { imageData, ip, fingerprint });
     });
 
-    // === UI слоёв ===
+    // === Layer UI ===
     function renderLayersUI() {
         const container = document.getElementById('layersList');
         if (!container) return;
@@ -1903,7 +1704,10 @@
             nameSpan.className = 'layer-name';
             nameSpan.textContent = layer.name;
             nameSpan.addEventListener('dblclick', () => {
-                if (index === 0) { triggerErrorEffect(); return; }
+                if (index === 0) {
+                    showError('Rename Layer', 'Background layer cannot be renamed.');
+                    return;
+                }
                 openRenameModal(index);
             });
             div.appendChild(nameSpan);
@@ -1967,7 +1771,10 @@
     let layerToRenameIndex = -1;
 
     function openRenameModal(index) {
-        if (index === 0) { triggerErrorEffect(); return; }
+        if (index === 0) {
+            showError('Rename Layer', 'Background layer cannot be renamed.');
+            return;
+        }
         layerToRenameIndex = index;
         renameInput.value = layers[index].name;
         renameModal.style.display = 'flex';
@@ -1994,7 +1801,10 @@
     renameModal.addEventListener('click', (e) => { if (e.target === renameModal) closeRenameModal(); });
 
     document.getElementById('addLayerBtn')?.addEventListener('click', () => {
-        if (layers.length >= 10) { triggerErrorEffect(); return; }
+        if (layers.length >= 10) {
+            showError('Add Layer', 'Maximum layer limit reached (10).');
+            return;
+        }
         const newCanvas = document.createElement('canvas');
         newCanvas.width = mainCanvas.width;
         newCanvas.height = mainCanvas.height;
@@ -2014,7 +1824,10 @@
     });
 
     document.getElementById('deleteLayerBtn')?.addEventListener('click', () => {
-        if (layers.length <= 1 || currentLayerIndex === 0) { triggerErrorEffect(); return; }
+        if (layers.length <= 1 || currentLayerIndex === 0) {
+            showError('Delete Layer', 'Cannot delete the background layer or the last layer.');
+            return;
+        }
         layers.splice(currentLayerIndex, 1);
         if (currentLayerIndex >= layers.length) currentLayerIndex = layers.length - 1;
         renderLayersUI();
@@ -2023,7 +1836,10 @@
     });
 
     document.getElementById('mergeDownBtn')?.addEventListener('click', () => {
-        if (currentLayerIndex === 0) { triggerErrorEffect(); return; }
+        if (currentLayerIndex === 0) {
+            showError('Merge Layers', 'Cannot merge the background layer down.');
+            return;
+        }
         const bottomLayer = layers[currentLayerIndex - 1];
         const topLayer = layers[currentLayerIndex];
         bottomLayer.ctx.save();
@@ -2039,7 +1855,7 @@
 
     initLayers();
 
-    // ============== ГАЛЕРЕЯ РИСУНКОВ ==============
+    // ===== PAINTINGS GALLERY (FIXED) =====
     const imageModal = document.getElementById('imageModal');
     const modalImage = document.getElementById('modalImage');
     const closeImageModal = document.getElementById('closeImageModal');
@@ -2069,18 +1885,52 @@
         currentModalId = id;
         loadingDiv.style.display = 'block';
         modalImage.style.display = 'none';
+        modalImage.alt = 'Loading...';
         if (modalLikes && modalLikes.parentElement) modalLikes.parentElement.style.display = 'none';
 
-        const { data, error } = await supabaseClient.from('paintings').select('image_data, created_at, likes').eq('id', id).single();
+        const { data, error } = await supabaseClient.from('paintings').select('image_data, created_at, likes, user_id, user_email').eq('id', id).single();
         if (error || !data) {
             loadingDiv.style.display = 'none';
             modalImage.style.display = 'block';
-            modalImage.alt = 'Error loading image';
+            modalImage.alt = 'Error loading';
+            showError('View Painting', 'Failed to load painting data.');
             return;
         }
 
+        let authorInfo = document.getElementById('modalAuthorInfo');
+        if (!authorInfo) {
+            authorInfo = document.createElement('div');
+            authorInfo.id = 'modalAuthorInfo';
+            authorInfo.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding: 4px 8px; background: #d4d0c8; border: 2px solid #808080; border-top-color: #ffffff; border-left-color: #ffffff;';
+            const modalContent = document.querySelector('.image-modal-content');
+            modalContent.prepend(authorInfo);
+        }
+        authorInfo.innerHTML = '';
+
+        if (data.user_id) {
+            const avatarUrl = await fetchUserAvatar(data.user_id);
+            const email = data.user_email;
+            if (avatarUrl) {
+                const avatarDiv = document.createElement('div');
+                avatarDiv.style.cssText = 'width: 32px; height: 32px; border: 2px solid #808080; border-top-color: #ffffff; border-left-color: #ffffff; background: #d4d0c8; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-shrink: 0;';
+                avatarDiv.innerHTML = `<img src="${avatarUrl}?t=${Date.now()}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                authorInfo.appendChild(avatarDiv);
+            }
+            if (email) {
+                const emailSpan = document.createElement('span');
+                emailSpan.style.fontWeight = 'bold';
+                emailSpan.textContent = escapeHtml(email);
+                authorInfo.appendChild(emailSpan);
+            }
+            authorInfo.style.display = authorInfo.children.length > 0 ? 'flex' : 'none';
+        } else {
+            authorInfo.style.display = 'none';
+        }
+
         modalImage.src = data.image_data;
-        modalImage.onload = () => {
+        modalImage.style.display = 'none';
+
+        modalImage.onload = function() {
             loadingDiv.style.display = 'none';
             modalImage.style.display = 'block';
             if (modalLikes && modalLikes.parentElement) modalLikes.parentElement.style.display = 'block';
@@ -2116,11 +1966,16 @@
                 }
             })();
         };
-        modalImage.onerror = () => {
+
+        modalImage.onerror = function() {
             loadingDiv.style.display = 'none';
             modalImage.style.display = 'block';
             modalImage.alt = 'Failed to load image';
+            if (imageModal.style.display !== 'none') {
+                showError('View Painting', 'Failed to load image. Please check your internet connection.');
+            }
         };
+
         imageModal.style.display = 'flex';
         disableBodyScroll();
     };
@@ -2128,31 +1983,17 @@
     function closeImageModalFunc() {
         imageModal.style.display = 'none';
         modalImage.src = '';
+        modalImage.onload = null;
+        modalImage.onerror = null;
         currentModalId = null;
         enableBodyScroll();
     }
     closeImageModal.addEventListener('click', closeImageModalFunc);
-    imageModal.addEventListener('click', (e) => { if (e.target === imageModal) closeImageModalFunc(); });
+    imageModal.addEventListener('click', (e) => {
+        if (e.target === imageModal) closeImageModalFunc();
+    });
 
-    if (modalPrevBtn && modalNextBtn && modalRandomBtn) {
-        modalPrevBtn.addEventListener('click', () => {
-            if (!currentModalId || allPaintings.length === 0) return;
-            const idx = allPaintings.indexOf(currentModalId);
-            if (idx > 0) openImageModal(allPaintings[idx - 1]);
-        });
-        modalNextBtn.addEventListener('click', () => {
-            if (!currentModalId || allPaintings.length === 0) return;
-            const idx = allPaintings.indexOf(currentModalId);
-            if (idx < allPaintings.length - 1) openImageModal(allPaintings[idx + 1]);
-        });
-        modalRandomBtn.addEventListener('click', () => {
-            if (allPaintings.length === 0) return;
-            const randomIdx = Math.floor(Math.random() * allPaintings.length);
-            openImageModal(allPaintings[randomIdx]);
-        });
-    }
-
-    // === Лайки ===
+    // ===== LIKES =====
     const VISITOR_KEY = 'visitor_id';
     function generateVisitorId() {
         if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -2196,7 +2037,7 @@
                     buttonElement.classList.remove('liked');
                     buttonElement.classList.add('unliked');
                     likeCountElement.textContent = currentLikes;
-                    triggerErrorEffect();
+                    showError('Like', 'You already liked this painting.');
                     return;
                 } else throw insertError;
             }
@@ -2209,7 +2050,7 @@
             buttonElement.classList.remove('liked');
             buttonElement.classList.add('unliked');
             likeCountElement.textContent = currentLikes;
-            triggerErrorEffect();
+            showError('Like', 'Failed to like: ' + err.message);
         }
     }
 
@@ -2242,7 +2083,16 @@
         }, 2000);
     }
 
+    // === Load paintings (with indicator) ===
     async function loadPaintings() {
+        // Show loading indicator across the grid
+        gallery.innerHTML = `
+            <div style="text-align:center;padding:20px;grid-column:1/-1;">
+                <img src="materialsl/loading.gif" alt="Loading..." class="loading-gif" style="width: 48px; height: 48px; display: block; margin: 0 auto;">
+                <div style="margin-top:10px; color: #ffffff;">Loading paintings...</div>
+            </div>
+        `;
+
         const offset = currentPage * pageSize;
         try {
             const { data, error } = await supabaseClient
@@ -2252,8 +2102,8 @@
                 .range(offset, offset + pageSize - 1);
 
             if (error) {
-                //console.error('Ошибка загрузки paintings:', error);
-                gallery.innerHTML = '<p style="color: red;">Ошибка загрузки рисунков: ' + error.message + '</p>';
+                showError('Load Paintings', 'Failed to load paintings: ' + error.message);
+                gallery.innerHTML = '<p style="color: red;">Error loading paintings</p>';
                 return;
             }
 
@@ -2282,81 +2132,6 @@
                 imgDiv.style.textAlign = 'center';
                 imgDiv.style.marginBottom = '10px';
                 imgDiv.style.position = 'relative';
-
-                if (p.user_id) {
-                    const authorDiv = document.createElement('div');
-                    authorDiv.style.display = 'flex';
-                    authorDiv.style.alignItems = 'center';
-                    authorDiv.style.gap = '5px';
-                    authorDiv.style.marginBottom = '5px';
-                    authorDiv.style.fontSize = '11px';
-                    authorDiv.style.color = '#333';
-
-                    const avatarSmall = document.createElement('div');
-                    avatarSmall.style.width = '24px';
-                    avatarSmall.style.height = '24px';
-                    avatarSmall.style.border = '1px solid #808080';
-                    avatarSmall.style.borderTopColor = '#ffffff';
-                    avatarSmall.style.borderLeftColor = '#ffffff';
-                    avatarSmall.style.background = '#d4d0c8';
-                    avatarSmall.style.overflow = 'hidden';
-                    avatarSmall.style.display = 'flex';
-                    avatarSmall.style.alignItems = 'center';
-                    avatarSmall.style.justifyContent = 'center';
-                    avatarSmall.style.fontSize = '14px';
-                    avatarSmall.style.flexShrink = '0';
-
-                    (async () => {
-                        const avatarUrl = await fetchUserAvatar(p.user_id);
-                        if (avatarUrl) {
-                            avatarSmall.innerHTML = `<img src="${avatarUrl}?t=${Date.now()}" style="width: 100%; height: 100%; object-fit: cover;">`;
-                        } else {
-                            avatarSmall.textContent = '👤';
-                        }
-                    })();
-
-                    authorDiv.appendChild(avatarSmall);
-                    const nameSpan = document.createElement('span');
-
-                    imgDiv.appendChild(authorDiv);
-                }
-                else{
-                    const authorDiv = document.createElement('div');
-                    authorDiv.style.display = 'flex';
-                    authorDiv.style.alignItems = 'center';
-                    authorDiv.style.gap = '5px';
-                    authorDiv.style.marginBottom = '5px';
-                    authorDiv.style.fontSize = '11px';
-                    authorDiv.style.color = '#333';
-
-                    const avatarSmall = document.createElement('div');
-                    avatarSmall.style.width = '24px';
-                    avatarSmall.style.height = '24px';
-                    avatarSmall.style.border = '1px solid #808080';
-                    avatarSmall.style.borderTopColor = '#ffffff';
-                    avatarSmall.style.borderLeftColor = '#ffffff';
-                    avatarSmall.style.background = '#d4d0c8';
-                    avatarSmall.style.overflow = 'hidden';
-                    avatarSmall.style.display = 'flex';
-                    avatarSmall.style.alignItems = 'center';
-                    avatarSmall.style.justifyContent = 'center';
-                    avatarSmall.style.fontSize = '14px';
-                    avatarSmall.style.flexShrink = '0';
-
-                    (async () => {
-                        const avatarUrl = await fetchUserAvatar(p.user_id);
-                        if (avatarUrl) {
-                            avatarSmall.innerHTML = `<img src="${avatarUrl}?t=${Date.now()}" style="width: 100%; height: 100%; object-fit: cover;">`;
-                        } else {
-                            avatarSmall.textContent = '👤';
-                        }
-                    })();
-
-                    authorDiv.appendChild(avatarSmall);
-                    const nameSpan = document.createElement('span');
-
-                    imgDiv.appendChild(authorDiv);
-                }
 
                 if (isTop) {
                     imgDiv.classList.add('top-painting');
@@ -2408,8 +2183,8 @@
                 gallery.appendChild(imgDiv);
             });
         } catch (e) {
-            //console.error('Исключение в loadPaintings:', e);
-            gallery.innerHTML = '<p style="color: red;">Ошибка загрузки рисунков</p>';
+            showError('Load Paintings', 'An error occurred while loading.');
+            gallery.innerHTML = '<p style="color: red;">Error loading paintings</p>';
         }
     }
 
@@ -2423,7 +2198,7 @@
         } catch (e) {}
     }
 
-    // ============== НАВИГАЦИЯ ==============
+    // ===== NAVIGATION =====
     const menuItems = document.querySelectorAll('#menu li');
     const sections = {
         about: document.getElementById('about'),
@@ -2463,8 +2238,7 @@
         document.body.classList.remove('modal-open');
     }
 
-    // ============== ДЕНЬ РОЖДЕНИЯ: ПРОГРЕСС-БАР И КОНФЕТТИ ==============
-
+    // ===== BIRTHDAY =====
     function startConfetti() {
         const oldContainer = document.getElementById('confetti-container');
         if (oldContainer) oldContainer.remove();
@@ -2597,8 +2371,8 @@
     function updateBirthdayProgress() {
         const now = new Date();
         const year = now.getFullYear();
-        const startDate = new Date(year, 5, 1);   // 1 июня
-        const endDate = new Date(year, 7, 24);    // 24 августа
+        const startDate = new Date(year, 5, 1);
+        const endDate = new Date(year, 7, 24);
 
         const container = document.getElementById('birthday-progress-container');
         const progressBar = document.getElementById('birthday-progress-bar');
@@ -2613,20 +2387,16 @@
             }
         }
 
-        // === КОНФЕТТИ ТОЛЬКО В ДЕНЬ РОЖДЕНИЯ ===
         if (now.getMonth() === 7 && now.getDate() === 24) {
-            // Проверяем, запускали ли уже конфетти сегодня
             const today = now.toDateString();
             if (localStorage.getItem('confetti_last_run') !== today) {
                 localStorage.setItem('confetti_last_run', today);
                 setTimeout(() => startConfetti(), 500);
             }
         } else {
-            // Если сегодня не день рождения, очищаем флаг, чтобы в следующий день рождения конфетти снова запустились
             localStorage.removeItem('confetti_last_run');
         }
 
-        // === ПРОГРЕСС-БАР (оставляем как было) ===
         if (now >= startDate && now <= endDate) {
             container.style.display = 'block';
             const totalMs = endDate - startDate;
@@ -2635,44 +2405,81 @@
             progressBar.style.width = progress + '%';
             progressBar.textContent = Math.round(progress) + '%';
             const daysLeft = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
-            progressText.textContent = `Time remaining until the birthday ${daysLeft} days`;
+            progressText.textContent = `Time remaining until the birthday: ${daysLeft} days`;
         } else {
             container.style.display = 'none';
         }
     }
 
-    // ============== ИНИЦИАЛИЗАЦИЯ ==============
+    // ===== GLOBAL LOADING INDICATOR =====
+    function showLoadingScreen(status) {
+        const overlay = document.getElementById('globalLoading');
+        const statusEl = document.getElementById('loadingStatus');
+        if (overlay) overlay.style.display = 'flex';
+        if (statusEl) statusEl.textContent = status || 'Loading...';
+    }
+
+    function hideLoadingScreen() {
+        const overlay = document.getElementById('globalLoading');
+        if (overlay) {
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 600);
+        }
+    }
+
+    // ===== INITIALIZATION =====
     (async function init() {
-        // Если уже заблокирован – не проверяем заново
+        showLoadingScreen('Checking security...');
+
         if (sessionStorage.getItem('vpn_blocked') === 'true') {
-            showBlockedScreen('заблокирован');
+            showBlockedScreen('blocked');
+            hideLoadingScreen();
             return;
         }
-        
-        // === ПРОВЕРКА VPN ===
         const ip = await getClientIP();
         const isVpn = await isVPN(ip);
         if (isVpn) {
             showBlockedScreen(ip);
+            hideLoadingScreen();
             return;
         }
-
         sessionStorage.removeItem('vpn_blocked');
 
-        // Остальной код инициализации
+        showLoadingScreen('Authenticating...');
         await checkAuth();
+
+        showLoadingScreen('Cleaning old records...');
         await cleanOldRecords();
-        loadGuestbook(0);
+
+        showLoadingScreen('Loading guestbook...');
+        await loadGuestbook(0);
+
+        showLoadingScreen('Loading likes...');
         await loadMyLikes();
+
+        showLoadingScreen('Loading gallery...');
         await loadTotalCount();
-        loadPaintings();
+        await loadPaintings();
+
+        showLoadingScreen('Updating info...');
         updateBirthdayProgress();
 
-        const fp = await getFingerprint();
-        console.log('🖨️ Ваш fingerprint (FingerprintJS или fallback):', fp);
+        getFingerprint().then(fp => {
+            console.log('🖨️ Your fingerprint:', fp);
+        });
+
+        setTimeout(() => {
+            hideLoadingScreen();
+        }, 300);
+
+        setTimeout(() => {
+            hideLoadingScreen();
+        }, 15000);
     })();
 
-    // Realtime обновления гостевой книги
+    // Realtime updates
     supabaseClient
         .channel('guestbook_changes')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guestbook' }, () => {
@@ -2681,7 +2488,7 @@
         })
         .subscribe();
 
-    // Пагинация
+    // Pagination
     if (guestbookPrevBtn) {
         guestbookPrevBtn.addEventListener('click', () => {
             if (guestbookCurrentPage > 0) loadGuestbook(guestbookCurrentPage - 1);
@@ -2704,5 +2511,5 @@
         });
     }
 
-    console.log('✅ main.js загружен (динамическая загрузка FingerprintJS, fallback, аватарки)');
+    console.log('✅ main.js loaded (all texts and comments in English)');
 })();
