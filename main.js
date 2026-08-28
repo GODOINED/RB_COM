@@ -1,4 +1,4 @@
-// main.js — with loading indicators and GIF animations (all texts and comments in English)
+// main.js — full version, avatar placed left of like button
 (function() {
     'use strict';
 
@@ -1128,7 +1128,7 @@
     async function renderMessages(messages) {
         gbMessages.innerHTML = '';
         if (!messages || messages.length === 0) {
-            gbMessages.innerHTML = '<p style="color: #ffffff;">No messages yet. Be the first!</p>';
+            gbMessages.innerHTML = '<p style="color: #808080;">No messages yet. Be the first!</p>';
             return;
         }
 
@@ -1148,7 +1148,7 @@
         const fragment = document.createDocumentFragment();
         messages.forEach(msg => {
             const msgDiv = document.createElement('div');
-            msgDiv.style.border = '2px solid #ffffff';
+            msgDiv.style.border = '2px solid #808080';
             msgDiv.style.borderRightColor = '#ffffff';
             msgDiv.style.borderBottomColor = '#ffffff';
             msgDiv.style.padding = '8px';
@@ -1161,7 +1161,7 @@
             const avatarDiv = document.createElement('div');
             avatarDiv.style.width = '48px';
             avatarDiv.style.height = '48px';
-            avatarDiv.style.border = '2px solid #ffffff';
+            avatarDiv.style.border = '2px solid #808080';
             avatarDiv.style.borderTopColor = '#ffffff';
             avatarDiv.style.borderLeftColor = '#ffffff';
             avatarDiv.style.background = '#d4d0c8';
@@ -1185,7 +1185,7 @@
             const date = msg.date ? new Date(msg.date).toLocaleString() : 'Unknown date';
             contentDiv.innerHTML = `
                 <div style="font-weight: bold;">${escapeHtml(msg.name)}</div>
-                <div style="font-size: 11px; color: #ffffff;">${date}</div>
+                <div style="font-size: 11px; color: #404040;">${date}</div>
                 <div style="margin-top: 5px; white-space: pre-wrap;">${escapeHtml(msg.message)}</div>
             `;
 
@@ -1855,7 +1855,7 @@
 
     initLayers();
 
-    // ===== PAINTINGS GALLERY (FIXED) =====
+    // ===== PAINTINGS GALLERY (with avatar left of like) =====
     const imageModal = document.getElementById('imageModal');
     const modalImage = document.getElementById('modalImage');
     const closeImageModal = document.getElementById('closeImageModal');
@@ -1895,36 +1895,6 @@
             modalImage.alt = 'Error loading';
             showError('View Painting', 'Failed to load painting data.');
             return;
-        }
-
-        let authorInfo = document.getElementById('modalAuthorInfo');
-        if (!authorInfo) {
-            authorInfo = document.createElement('div');
-            authorInfo.id = 'modalAuthorInfo';
-            authorInfo.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding: 4px 8px; background: #d4d0c8; border: 2px solid #808080; border-top-color: #ffffff; border-left-color: #ffffff;';
-            const modalContent = document.querySelector('.image-modal-content');
-            modalContent.prepend(authorInfo);
-        }
-        authorInfo.innerHTML = '';
-
-        if (data.user_id) {
-            const avatarUrl = await fetchUserAvatar(data.user_id);
-            const email = data.user_email;
-            if (avatarUrl) {
-                const avatarDiv = document.createElement('div');
-                avatarDiv.style.cssText = 'width: 32px; height: 32px; border: 2px solid #808080; border-top-color: #ffffff; border-left-color: #ffffff; background: #d4d0c8; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-shrink: 0;';
-                avatarDiv.innerHTML = `<img src="${avatarUrl}?t=${Date.now()}" style="width: 100%; height: 100%; object-fit: cover;">`;
-                authorInfo.appendChild(avatarDiv);
-            }
-            if (email) {
-                const emailSpan = document.createElement('span');
-                emailSpan.style.fontWeight = 'bold';
-                emailSpan.textContent = escapeHtml(email);
-                authorInfo.appendChild(emailSpan);
-            }
-            authorInfo.style.display = authorInfo.children.length > 0 ? 'flex' : 'none';
-        } else {
-            authorInfo.style.display = 'none';
         }
 
         modalImage.src = data.image_data;
@@ -2083,13 +2053,13 @@
         }, 2000);
     }
 
-    // === Load paintings (with indicator) ===
+    // === Load paintings (avatar left of like) ===
     async function loadPaintings() {
         // Show loading indicator across the grid
         gallery.innerHTML = `
             <div style="text-align:center;padding:20px;grid-column:1/-1;">
                 <img src="materialsl/loading.gif" alt="Loading..." class="loading-gif" style="width: 48px; height: 48px; display: block; margin: 0 auto;">
-                <div style="margin-top:10px; color: #ffffff;">Loading paintings...</div>
+                <div style="margin-top:10px; color: #000;">Loading paintings...</div>
             </div>
         `;
 
@@ -2112,6 +2082,22 @@
             document.getElementById('prevPageBtn').disabled = currentPage === 0;
             document.getElementById('nextPageBtn').disabled = currentPage >= totalPages - 1;
             document.getElementById('pageIndicator').textContent = `Page ${currentPage + 1}`;
+
+            // Fetch avatars for all users in this page
+            const avatarPromises = data.map(async (p) => {
+                if (p.user_id) {
+                    const url = await fetchUserAvatar(p.user_id);
+                    return { userId: p.user_id, avatarUrl: url };
+                }
+                return null;
+            });
+            const avatarResults = await Promise.all(avatarPromises);
+            const avatarMap = {};
+            avatarResults.forEach(item => {
+                if (item) {
+                    avatarMap[item.userId] = item.avatarUrl;
+                }
+            });
 
             let maxLikes = 0;
             data.forEach(p => { if (p.likes > maxLikes) maxLikes = p.likes; });
@@ -2153,6 +2139,7 @@
                 dateDiv.textContent = new Date(p.created_at).toLocaleString();
                 imgDiv.appendChild(dateDiv);
 
+                // ---- Like row with avatar on the left ----
                 const likeRow = document.createElement('div');
                 likeRow.style.display = 'flex';
                 likeRow.style.alignItems = 'center';
@@ -2160,10 +2147,14 @@
                 likeRow.style.marginTop = '5px';
                 likeRow.style.gap = '5px';
 
-                const likeCount = document.createElement('span');
-                likeCount.textContent = p.likes || 0;
-                likeCount.style.fontSize = '12px';
-                likeCount.style.fontWeight = 'bold';
+                // Avatar (if exists) placed first (left side)
+                const avatarUrl = avatarMap[p.user_id];
+                if (avatarUrl) {
+                    const avatarImg = document.createElement('img');
+                    avatarImg.src = avatarUrl + '?t=' + Date.now();
+                    avatarImg.style.cssText = 'width: 24px; height: 24px; border: 1px solid #808080; border-top-color: #ffffff; border-left-color: #ffffff; object-fit: cover; flex-shrink: 0;';
+                    likeRow.appendChild(avatarImg);
+                }
 
                 const likeBtn = document.createElement('button');
                 likeBtn.className = 'like-button';
@@ -2177,9 +2168,16 @@
                     });
                 }
 
+                const likeCount = document.createElement('span');
+                likeCount.textContent = p.likes || 0;
+                likeCount.style.fontSize = '12px';
+                likeCount.style.fontWeight = 'bold';
+
                 likeRow.appendChild(likeBtn);
                 likeRow.appendChild(likeCount);
                 imgDiv.appendChild(likeRow);
+                // ---- End like row ----
+
                 gallery.appendChild(imgDiv);
             });
         } catch (e) {
@@ -2511,5 +2509,5 @@
         });
     }
 
-    console.log('✅ main.js loaded (all texts and comments in English)');
+    console.log('✅ main.js loaded (avatar left of like)');
 })();
